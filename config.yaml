@@ -1,0 +1,24 @@
+viewport:
+  width: 192
+  height: 108
+
+strips:
+  - id: 0
+    length: 40
+    position:
+      start: {x: 15, y: 8}
+      end: {x: 79, y: 12}
+    reverse: false
+  - id: 1
+    length: 40
+    position:
+      start: {x: 102, y: 20}
+      end: {x: 61, y: 21}
+    reverse: true
+
+output:
+  type: "preview"  # Start with web preview only
+
+targetFPS: 25
+webServer:
+  port: 8080

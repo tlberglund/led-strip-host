@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>LED Strip Preview</title>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <style>
+      * {
+         box-sizing: border-box;
+      }
+
+      body {
+         margin: 0;
+         padding: 20px;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+         background: #1a1a1a;
+         color: #fff;
+      }
+
+      h1 {
+         margin: 0 0 20px 0;
+         font-size: 24px;
+         font-weight: 600;
+      }
+
+      #container {
+         display: flex;
+         gap: 20px;
+         flex-wrap: wrap;
+      }
+
+      #preview {
+         flex: 1;
+         min-width: 400px;
+         background: #000;
+         border: 2px solid #333;
+         border-radius: 8px;
+         overflow: hidden;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         padding: 20px;
+         position: relative;
+      }
+
+      #controls {
+         width: 320px;
+         background: #2a2a2a;
+         padding: 20px;
+         border-radius: 8px;
+      }
+
+      canvas {
+         display: block;
+         image-rendering: pixelated;
+         image-rendering: crisp-edges;
+         max-width: 100%;
+         height: auto;
+      }
+
+      #canvas, #led-canvas {
+         position: absolute;
+         top: 50%;
+         left: 50%;
+         transform: translate(-50%, -50%);
+      }
+
+      #canvas {
+         z-index: 1;
+      }
+
+      #led-canvas {
+         z-index: 2;
+      }
+
+      .control-group {
+         margin-bottom: 20px;
+      }
+
+      label {
+         display: block;
+         margin-bottom: 5px;
+         color: #aaa;
+         font-size: 12px;
+         text-transform: uppercase;
+         font-weight: 500;
+      }
+
+      select, input, button {
+         width: 100%;
+         padding: 10px;
+         background: #1a1a1a;
+         border: 1px solid #444;
+         color: #fff;
+         border-radius: 4px;
+         font-size: 14px;
+         font-family: inherit;
+      }
+
+      select:focus, input:focus {
+         outline: none;
+         border-color: #4a9eff;
+      }
+
+      input[type="range"] {
+         padding: 5px;
+      }
+
+      .slider-value {
+         display: inline-block;
+         margin-top: 5px;
+         color: #4a9eff;
+         font-size: 14px;
+         font-weight: 500;
+      }
+
+      button {
+         background: #4a9eff;
+         border: none;
+         cursor: pointer;
+         margin-top: 10px;
+         font-weight: 500;
+         transition: background 0.2s;
+      }
+
+      button:hover {
+         background: #3a8eef;
+      }
+
+      button:active {
+         background: #2a7edf;
+      }
+
+      #stats {
+         font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+         font-size: 12px;
+         color: #888;
+         margin-top: 20px;
+         padding: 15px;
+         background: #1a1a1a;
+         border-radius: 4px;
+         border: 1px solid #333;
+      }
+
+      .stat-row {
+         display: flex;
+         justify-content: space-between;
+         margin-bottom: 8px;
+      }
+
+      .stat-row:last-child {
+         margin-bottom: 0;
+      }
+
+      .stat-label {
+         color: #aaa;
+      }
+
+      .stat-value {
+         color: #4a9eff;
+         font-weight: 500;
+      }
+
+      #connection-status {
+         padding: 10px;
+         border-radius: 4px;
+         text-align: center;
+         font-size: 13px;
+         margin-bottom: 20px;
+         font-weight: 500;
+         transition: all 0.3s;
+      }
+
+      .connected {
+         background: #2d5f2d;
+         color: #90ee90;
+         border: 1px solid #3d7f3d;
+      }
+
+      .disconnected {
+         background: #5f2d2d;
+         color: #ff9090;
+         border: 1px solid #7f3d3d;
+      }
+
+      .view-controls {
+         margin-bottom: 20px;
+      }
+
+      .checkbox-group {
+         display: flex;
+         align-items: center;
+         padding: 10px 0;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+         width: auto;
+         margin-right: 10px;
+         cursor: pointer;
+      }
+
+      .checkbox-group label {
+         margin: 0;
+         color: #fff;
+         font-size: 14px;
+         text-transform: none;
+         font-weight: 400;
+         cursor: pointer;
+      }
+
+      @media (max-width: 768px) {
+         #container {
+            flex-direction: column;
+         }
+
+         #controls {
+            width: 100%;
+         }
+
+         #preview {
+            min-width: 0;
+         }
+      }
+   </style>
+</head>
+<body>
+   <h1>LED Strip Preview</h1>
+
+   <div id="container">
+      <div id="preview">
+         <canvas id="canvas"></canvas>
+         <canvas id="led-canvas" style="display: none;"></canvas>
+      </div>
+
+      <div id="controls">
+         <div id="connection-status" class="disconnected">Disconnected</div>
+
+         <div class="view-controls">
+            <div class="checkbox-group">
+               <input type="checkbox" id="viewport-view-checkbox" checked onchange="toggleView()">
+               <label for="viewport-view-checkbox">Show Viewport</label>
+            </div>
+            <div class="checkbox-group">
+               <input type="checkbox" id="strips-view-checkbox" onchange="toggleView()">
+               <label for="strips-view-checkbox">Show LED Strips</label>
+            </div>
+         </div>
+
+         <div class="control-group">
+            <label>Pattern</label>
+            <select id="pattern-select">
+               <option value="">Loading...</option>
+            </select>
+         </div>
+
+         <div class="control-group">
+            <label>Speed</label>
+            <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1">
+            <span class="slider-value" id="speed-value">1.0x</span>
+         </div>
+
+         <div class="control-group">
+            <label>Brightness</label>
+            <input type="range" id="brightness" min="0" max="100" value="100">
+            <span class="slider-value" id="brightness-value">100%</span>
+         </div>
+
+         <button onclick="applyPattern()">Apply Pattern</button>
+
+         <div id="stats">
+            <div class="stat-row">
+               <span class="stat-label">FPS:</span>
+               <span class="stat-value" id="fps">--</span>
+            </div>
+            <div class="stat-row">
+               <span class="stat-label">Frame Time:</span>
+               <span class="stat-value" id="frame-time">--</span>
+            </div>
+            <div class="stat-row">
+               <span class="stat-label">Resolution:</span>
+               <span class="stat-value" id="resolution">--</span>
+            </div>
+            <div class="stat-row">
+               <span class="stat-label">Clients:</span>
+               <span class="stat-value" id="clients">--</span>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   <script src="preview.js"></script>
+</body>
+</html>
