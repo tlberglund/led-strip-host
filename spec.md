@@ -1901,3 +1901,140 @@ document.getElementById('color-picker').addEventListener('change', (e) => {
 });
 ```
 
+## 13. React Frontend Conversion
+
+### Overview
+
+Convert the vanilla JS frontend (`index.html` + `preview.js`) into a React + TypeScript application using Vite. The backend stays unchanged. Build output replaces current files in `src/main/resources/web/`.
+
+### Architecture
+
+- **Build tool**: Vite with React + TypeScript
+- **Source location**: `frontend/` at project root
+- **State management**: `useState` in App + custom hooks (no Redux/Zustand)
+- **High-frequency rendering**: `useRef` + `requestAnimationFrame` to bypass React re-renders
+- **CSS**: Single `App.css` porting existing styles
+- **Components**: 11 components + 6 custom hooks
+
+### Performance Strategy
+
+WebSocket viewport data (20 FPS) bypasses React entirely:
+1. `useWebSocket` stores messages in `useRef` (no `useState`)
+2. `useViewportRenderer` reads the ref in a `requestAnimationFrame` loop
+3. Canvas is painted directly via `canvasRef.current.getContext('2d')`
+
+React re-renders only for: connection status, user interactions, stats (1/sec), view toggles.
+
+### Project Structure
+
+```
+frontend/
+   package.json
+   tsconfig.json
+   vite.config.ts
+   index.html
+   src/
+      main.tsx
+      App.tsx
+      App.css
+      types.ts
+      components/
+         ConnectionStatus.tsx
+         ControlsSidebar.tsx
+         PatternSelector.tsx
+         SpeedSlider.tsx
+         BrightnessSlider.tsx
+         ApplyPatternButton.tsx
+         ViewToggles.tsx
+         StatsDisplay.tsx
+         PreviewArea.tsx
+         ViewportCanvas.tsx
+         LEDStripsCanvas.tsx
+      hooks/
+         useWebSocket.ts
+         usePatterns.ts
+         useStats.ts
+         useLEDStrips.ts
+         useViewportRenderer.ts
+         useLEDStripsRenderer.ts
+```
+
+### Implementation Phases
+
+#### Phase R1: Scaffolding
+1. `npm create vite@latest frontend -- --template react-ts`
+2. Configure `vite.config.ts` (outDir → `../src/main/resources/web`, proxy for `/api` and `/viewport`)
+3. Create `types.ts` (ViewportMessage, RenderStats, ClientCount, LEDStripData, PatternParams)
+4. Update `.gitignore` (add `frontend/node_modules/`)
+
+**Checkpoint**: `npm run dev` starts Vite dev server, proxies to Ktor backend
+
+#### Phase R2: Custom Hooks
+5. `useWebSocket.ts` — WebSocket connection, auto-reconnect, stores viewport data in useRef
+6. `usePatterns.ts` — Fetch `/api/patterns` on mount
+7. `useStats.ts` — Poll `/api/stats` + `/api/clients` every 1s
+8. `useLEDStrips.ts` — Poll `/api/led-strips` at 50ms when enabled, stores in useRef
+9. `useViewportRenderer.ts` — RAF loop, Base64 decode, canvas putImageData
+10. `useLEDStripsRenderer.ts` — RAF loop, LED squares on overlay canvas
+
+**Checkpoint**: Hooks are importable and TypeScript compiles
+
+#### Phase R3: Leaf Components
+11. `ConnectionStatus.tsx` — green/red indicator
+12. `PatternSelector.tsx` — dropdown from patterns list
+13. `SpeedSlider.tsx` — range 0.1-5.0 with formatted display
+14. `BrightnessSlider.tsx` — range 0-100 with formatted display
+15. `ApplyPatternButton.tsx` — calls onApply
+16. `ViewToggles.tsx` — viewport/strips checkboxes
+17. `StatsDisplay.tsx` — monospace stats box
+
+**Checkpoint**: Components render in isolation
+
+#### Phase R4: Canvas & Composite Components
+18. `ViewportCanvas.tsx` — `React.memo`, canvas ref, wired to `useViewportRenderer`
+19. `LEDStripsCanvas.tsx` — `React.memo`, canvas ref, wired to `useLEDStripsRenderer`
+20. `PreviewArea.tsx` — container with both canvases stacked
+21. `ControlsSidebar.tsx` — layout wrapper for all control components
+
+**Checkpoint**: Canvas renders viewport data from WebSocket
+
+#### Phase R5: Assembly & Styling
+22. `App.css` — port all CSS from `index.html` (lines 7-223)
+23. `App.tsx` — wire state, hooks, and components together
+24. `main.tsx` — React entry point
+25. `frontend/index.html` — minimal Vite entry
+
+**Checkpoint**: Full app works in `npm run dev` against running Ktor backend
+
+#### Phase R6: Build & Deploy
+26. `npm run build` → verify output in `src/main/resources/web/`
+27. Start Ktor server alone → verify React app loads from built static files
+28. Delete old `index.html` and `preview.js` from git (now build artifacts)
+
+**Checkpoint**: Ktor serves the React app identically to the old vanilla JS version
+
+### Vite Configuration
+
+```typescript
+export default defineConfig({
+   plugins: [react()],
+   base: '/',
+   build: {
+      outDir: '../src/main/resources/web',
+      emptyOutDir: true,
+   },
+   server: {
+      proxy: {
+         '/api': 'http://localhost:8080',
+         '/viewport': { target: 'ws://localhost:8080', ws: true },
+      },
+   },
+});
+```
+
+### Key Files to Reference During Implementation
+
+- `src/main/resources/web/preview.js` — All logic to port (WebSocket, rendering, API calls)
+- `src/main/resources/web/index.html` — CSS styles and HTML structure to decompose
+- `src/main/kotlin/com/timberglund/ledhost/web/PreviewServer.kt` — API contract
+

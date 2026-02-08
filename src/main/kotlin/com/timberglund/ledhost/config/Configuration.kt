@@ -14,6 +14,7 @@ import java.io.File
  * @property output Output layer configuration
  * @property webServer Web server configuration
  * @property targetFPS Target frames per second (default: 60)
+ * @property backgroundImage Path to a static background image file (optional)
  */
 @Serializable
 data class Configuration(
@@ -22,7 +23,8 @@ data class Configuration(
    val mapper: MapperConfig = MapperConfig(),
    val output: OutputConfig,
    val webServer: WebServerConfig = WebServerConfig(),
-   val targetFPS: Int = 60
+   val targetFPS: Int = 60,
+   val backgroundImage: String = ""
 ) {
    init {
       require(targetFPS > 0) { "Target FPS must be positive, got $targetFPS" }

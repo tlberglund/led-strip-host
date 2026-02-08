@@ -22,6 +22,7 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 import java.time.Duration
 
 /**
@@ -172,6 +173,20 @@ class PreviewServer(private val port: Int,
                   .sortedBy { it.id }
 
                call.respond(stripData)
+            }
+
+            get("/api/background-image") {
+               val imagePath = configuration.backgroundImage
+               if (imagePath.isNotEmpty()) {
+                  val file = File(imagePath)
+                  if (file.exists() && file.isFile) {
+                     call.respondFile(file)
+                  } else {
+                     call.respond(HttpStatusCode.NotFound, "Background image not found: $imagePath")
+                  }
+               } else {
+                  call.respond(HttpStatusCode.NotFound, "No background image configured")
+               }
             }
          }
       }

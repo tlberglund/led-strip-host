@@ -22,3 +22,6 @@ output:
 targetFPS: 25
 webServer:
   port: 8080
+
+# Path to a static background image to display behind the LED strips
+backgroundImage: "/Users/tlberglund/Pictures/office-background.jpg"
