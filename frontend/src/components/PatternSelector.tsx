@@ -1,5 +1,7 @@
+import type { PatternInfo } from '../types.ts';
+
 interface PatternSelectorProps {
-   patterns: string[];
+   patterns: PatternInfo[];
    selectedPattern: string;
    onSelect: (pattern: string) => void;
 }
@@ -17,7 +19,7 @@ export function PatternSelector({ patterns, selectedPattern, onSelect }: Pattern
                <option value="">Loading...</option>
             ) : (
                patterns.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p.name} value={p.name}>{p.name}</option>
                ))
             )}
          </select>

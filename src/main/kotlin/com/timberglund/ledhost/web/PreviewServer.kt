@@ -2,6 +2,7 @@ package com.timberglund.ledhost.web
 
 import com.timberglund.ledhost.config.Configuration
 import com.timberglund.ledhost.mapper.PixelMapper
+import com.timberglund.ledhost.pattern.ParameterDef
 import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.pattern.PatternRegistry
@@ -98,7 +99,11 @@ class PreviewServer(private val port: Int,
 
             // REST API endpoints
             get("/api/patterns") {
-               call.respond(patternRegistry.listPatterns())
+               val patternInfos = patternRegistry.listPatterns().map { name ->
+                  val pattern = patternRegistry.get(name)!!
+                  PatternInfo(name, pattern.description, pattern.parameters)
+               }
+               call.respond(patternInfos)
             }
 
             post("/api/pattern/{name}") {
@@ -109,16 +114,8 @@ class PreviewServer(private val port: Int,
                }
 
                val params = try {
-                  val received = call.receive<PatternParams>()
-
-                  // Convert PatternParams to Map<String, Any>
-                  val paramsMap = mutableMapOf<String, Any>()
-                  received.speed?.let { paramsMap["speed"] = it }
-                  received.brightness?.let { paramsMap["brightness"] = it }
-                  received.direction?.let { paramsMap["direction"] = it }
-                  received.saturation?.let { paramsMap["saturation"] = it }
-
-                  paramsMap
+                  val jsonMap = call.receive<Map<String, kotlinx.serialization.json.JsonElement>>()
+                  parseJsonParams(jsonMap)
                }
                catch (e: Exception) {
                   emptyMap()
@@ -234,6 +231,29 @@ class PreviewServer(private val port: Int,
    }
 
    /**
+    * Converts a JSON map into a Map<String, Any> with native types.
+    */
+   private fun parseJsonParams(jsonMap: Map<String, kotlinx.serialization.json.JsonElement>): Map<String, Any> {
+      val result = mutableMapOf<String, Any>()
+      for ((key, element) in jsonMap) {
+         if (element is kotlinx.serialization.json.JsonPrimitive) {
+            val content = element.content
+            if (element.isString) {
+               result[key] = content
+            } else if (content == "true") {
+               result[key] = true
+            } else if (content == "false") {
+               result[key] = false
+            } else {
+               // Try to parse as number (double covers all numeric JSON values)
+               content.toDoubleOrNull()?.let { result[key] = it }
+            }
+         }
+      }
+      return result
+   }
+
+   /**
     * Sets the active pattern with parameters.
     */
    private fun setPattern(name: String, params: Map<String, Any>) {
@@ -264,14 +284,13 @@ class PreviewServer(private val port: Int,
 }
 
 /**
- * Pattern parameters received from web client.
+ * Pattern info with metadata for the frontend.
  */
 @Serializable
-data class PatternParams(
-   val speed: Double? = null,
-   val brightness: Double? = null,
-   val direction: String? = null,
-   val saturation: Double? = null
+data class PatternInfo(
+   val name: String,
+   val description: String,
+   val parameters: List<ParameterDef>
 )
 
 /**

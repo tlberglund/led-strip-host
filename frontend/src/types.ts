@@ -32,8 +32,47 @@ export interface LEDStripData {
    leds: LEDData[];
 }
 
-// Pattern parameters sent to POST /api/pattern/{name}
-export interface PatternParams {
-   speed: number;
-   brightness: number;
+// Parameter definition types from GET /api/patterns
+export interface FloatParamDef {
+   type: 'float';
+   name: string;
+   label: string;
+   min: number;
+   max: number;
+   step: number;
+   default: number;
+}
+
+export interface IntParamDef {
+   type: 'int';
+   name: string;
+   label: string;
+   min: number;
+   max: number;
+   step: number;
+   default: number;
+}
+
+export interface SelectParamDef {
+   type: 'select';
+   name: string;
+   label: string;
+   options: string[];
+   default: string;
+}
+
+export interface ColorParamDef {
+   type: 'color';
+   name: string;
+   label: string;
+   default: string; // hex "#RRGGBB"
+}
+
+export type ParameterDef = FloatParamDef | IntParamDef | SelectParamDef | ColorParamDef;
+
+// Pattern info with metadata from GET /api/patterns
+export interface PatternInfo {
+   name: string;
+   description: string;
+   parameters: ParameterDef[];
 }

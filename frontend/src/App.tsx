@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import './App.css';
 import { useWebSocket } from './hooks/useWebSocket.ts';
 import { usePatterns } from './hooks/usePatterns.ts';
@@ -7,6 +7,7 @@ import { useLEDStrips } from './hooks/useLEDStrips.ts';
 import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
+import type { PatternInfo } from './types.ts';
 
 function App() {
    // Connection state
@@ -17,10 +18,9 @@ function App() {
    const [showStrips, setShowStrips] = useState(false);
    const [showBackground, setShowBackground] = useState(false);
 
-   // Pattern controls
+   // Pattern controls — dynamic parameter values
    const [selectedPattern, setSelectedPattern] = useState('');
-   const [speed, setSpeed] = useState(1.0);
-   const [brightness, setBrightness] = useState(100);
+   const [paramValues, setParamValues] = useState<Record<string, number | string>>({});
 
    // Resolution tracking (updated by ViewportCanvas)
    const [resolution, setResolution] = useState('');
@@ -36,34 +36,51 @@ function App() {
    const ledStripsRef = useLEDStrips(showStrips);
    const backgroundImageUrl = useBackgroundImage();
 
+   // Look up the currently selected pattern's info
+   const selectedPatternInfo: PatternInfo | undefined = useMemo(() => {
+      return patterns.find((p) => p.name === selectedPattern);
+   }, [patterns, selectedPattern]);
+
    const handleResolutionChange = useCallback((width: number, height: number) => {
       setResolution(`${width}x${height}`);
       setViewportWidth(width);
       setViewportHeight(height);
    }, []);
 
-   const handlePatternSelect = useCallback((pattern: string) => {
-      setSelectedPattern(pattern);
-      // Auto-apply on change, matching the original behavior
-      if (pattern) {
-         const normalizedBrightness = brightness / 100;
-         fetch(`/api/pattern/${pattern}`, {
+   // Initialize parameter defaults when a pattern is selected
+   const handlePatternSelect = useCallback((patternName: string) => {
+      setSelectedPattern(patternName);
+
+      // Build default values from the pattern's parameter definitions
+      const patternInfo = patterns.find((p) => p.name === patternName);
+      if (patternInfo) {
+         const defaults: Record<string, number | string> = {};
+         for (const param of patternInfo.parameters) {
+            defaults[param.name] = param.default;
+         }
+         setParamValues(defaults);
+
+         // Auto-apply on pattern change
+         fetch(`/api/pattern/${patternName}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ speed, brightness: normalizedBrightness }),
+            body: JSON.stringify(defaults),
          }).catch((e) => console.error('Failed to apply pattern:', e));
       }
-   }, [speed, brightness]);
+   }, [patterns]);
+
+   const handleParamChange = useCallback((name: string, value: number | string) => {
+      setParamValues((prev) => ({ ...prev, [name]: value }));
+   }, []);
 
    const handleApplyPattern = useCallback(async () => {
       if (!selectedPattern) return;
 
-      const normalizedBrightness = brightness / 100;
       try {
          const response = await fetch(`/api/pattern/${selectedPattern}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ speed, brightness: normalizedBrightness }),
+            body: JSON.stringify(paramValues),
          });
          if (!response.ok) {
             console.error('Failed to apply pattern:', response.status);
@@ -71,7 +88,7 @@ function App() {
       } catch (e) {
          console.error('Exception applying pattern:', e);
       }
-   }, [selectedPattern, speed, brightness]);
+   }, [selectedPattern, paramValues]);
 
    return (
       <>
@@ -100,10 +117,9 @@ function App() {
                patterns={patterns}
                selectedPattern={selectedPattern}
                onPatternSelect={handlePatternSelect}
-               speed={speed}
-               onSpeedChange={setSpeed}
-               brightness={brightness}
-               onBrightnessChange={setBrightness}
+               parameters={selectedPatternInfo?.parameters ?? []}
+               paramValues={paramValues}
+               onParamChange={handleParamChange}
                onApplyPattern={handleApplyPattern}
                stats={stats}
                resolution={resolution}

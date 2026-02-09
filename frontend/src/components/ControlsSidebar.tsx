@@ -1,9 +1,9 @@
 import type { StatsData } from '../hooks/useStats.ts';
+import type { PatternInfo, ParameterDef } from '../types.ts';
 import { ConnectionStatus } from './ConnectionStatus.tsx';
 import { ViewToggles } from './ViewToggles.tsx';
 import { PatternSelector } from './PatternSelector.tsx';
-import { SpeedSlider } from './SpeedSlider.tsx';
-import { BrightnessSlider } from './BrightnessSlider.tsx';
+import { ParameterControl } from './ParameterControl.tsx';
 import { ApplyPatternButton } from './ApplyPatternButton.tsx';
 import { StatsDisplay } from './StatsDisplay.tsx';
 
@@ -16,13 +16,12 @@ interface ControlsSidebarProps {
    onShowViewportChange: (show: boolean) => void;
    onShowStripsChange: (show: boolean) => void;
    onShowBackgroundChange: (show: boolean) => void;
-   patterns: string[];
+   patterns: PatternInfo[];
    selectedPattern: string;
    onPatternSelect: (pattern: string) => void;
-   speed: number;
-   onSpeedChange: (speed: number) => void;
-   brightness: number;
-   onBrightnessChange: (brightness: number) => void;
+   parameters: ParameterDef[];
+   paramValues: Record<string, number | string>;
+   onParamChange: (name: string, value: number | string) => void;
    onApplyPattern: () => void;
    stats: StatsData;
    resolution: string;
@@ -40,10 +39,9 @@ export function ControlsSidebar({
    patterns,
    selectedPattern,
    onPatternSelect,
-   speed,
-   onSpeedChange,
-   brightness,
-   onBrightnessChange,
+   parameters,
+   paramValues,
+   onParamChange,
    onApplyPattern,
    stats,
    resolution,
@@ -65,8 +63,14 @@ export function ControlsSidebar({
             selectedPattern={selectedPattern}
             onSelect={onPatternSelect}
          />
-         <SpeedSlider speed={speed} onSpeedChange={onSpeedChange} />
-         <BrightnessSlider brightness={brightness} onBrightnessChange={onBrightnessChange} />
+         {parameters.map((param) => (
+            <ParameterControl
+               key={param.name}
+               param={param}
+               value={paramValues[param.name] ?? param.default}
+               onChange={onParamChange}
+            />
+         ))}
          <ApplyPatternButton onApply={onApplyPattern} />
          <StatsDisplay stats={stats} resolution={resolution} />
       </div>

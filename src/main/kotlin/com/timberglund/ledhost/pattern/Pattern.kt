@@ -1,6 +1,57 @@
 package com.timberglund.ledhost.pattern
 
 import com.timberglund.ledhost.viewport.Viewport
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * Describes a configurable parameter that a pattern accepts.
+ * Used by the frontend to dynamically render controls.
+ */
+@Serializable
+sealed class ParameterDef {
+   abstract val name: String
+   abstract val label: String
+
+   @Serializable
+   @SerialName("float")
+   data class FloatParam(
+      override val name: String,
+      override val label: String,
+      val min: Float,
+      val max: Float,
+      val step: Float,
+      val default: Float
+   ) : ParameterDef()
+
+   @Serializable
+   @SerialName("int")
+   data class IntParam(
+      override val name: String,
+      override val label: String,
+      val min: Int,
+      val max: Int,
+      val step: Int,
+      val default: Int
+   ) : ParameterDef()
+
+   @Serializable
+   @SerialName("select")
+   data class SelectParam(
+      override val name: String,
+      override val label: String,
+      val options: List<String>,
+      val default: String
+   ) : ParameterDef()
+
+   @Serializable
+   @SerialName("color")
+   data class ColorParam(
+      override val name: String,
+      override val label: String,
+      val default: String // hex "#RRGGBB"
+   ) : ParameterDef()
+}
 
 /**
  * Pattern interface for LED animation algorithms.
@@ -16,6 +67,13 @@ interface Pattern {
     * Human-readable description of the pattern
     */
    val description: String
+
+   /**
+    * Declares the configurable parameters this pattern accepts.
+    * The frontend uses this metadata to dynamically render controls.
+    * Default is empty (no declared parameters).
+    */
+   val parameters: List<ParameterDef> get() = emptyList()
 
    /**
     * Initializes the pattern with a viewport and parameters.

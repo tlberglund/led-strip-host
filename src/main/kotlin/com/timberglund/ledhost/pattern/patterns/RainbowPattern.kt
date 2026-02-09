@@ -1,5 +1,6 @@
 package com.timberglund.ledhost.pattern.patterns
 
+import com.timberglund.ledhost.pattern.ParameterDef
 import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Color
@@ -12,6 +13,13 @@ import com.timberglund.ledhost.viewport.Viewport
 class RainbowPattern : Pattern {
    override val name = "Rainbow"
    override val description = "Scrolling rainbow effect with smooth color transitions"
+
+   override val parameters = listOf(
+      ParameterDef.FloatParam("speed", "Speed", 0.1f, 5f, 0.1f, 1f),
+      ParameterDef.FloatParam("brightness", "Brightness", 0f, 1f, 0.05f, 1f),
+      ParameterDef.FloatParam("saturation", "Saturation", 0f, 1f, 0.05f, 1f),
+      ParameterDef.SelectParam("direction", "Direction", listOf("horizontal", "vertical", "diagonal"), "horizontal"),
+   )
 
    private var hueOffset = 0f
    private var speed = 1f

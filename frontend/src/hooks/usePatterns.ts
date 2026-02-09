@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
+import type { PatternInfo } from '../types.ts';
 
-export function usePatterns(): string[] {
-   const [patterns, setPatterns] = useState<string[]>([]);
+export function usePatterns(): PatternInfo[] {
+   const [patterns, setPatterns] = useState<PatternInfo[]>([]);
 
    useEffect(() => {
       async function fetchPatterns() {
          try {
             const response = await fetch('/api/patterns');
-            const data: string[] = await response.json();
+            const data: PatternInfo[] = await response.json();
             setPatterns(data);
          } catch (e) {
             console.error('Failed to load patterns:', e);
