@@ -1,20 +1,38 @@
 viewport:
-  width: 192
-  height: 108
+  width: 240
+  height: 135
 
 strips:
   - id: 0
     length: 40
     position:
-      start: {x: 15, y: 8}
-      end: {x: 79, y: 12}
+      start: {x: 45, y: 10}
+      end: {x: 99, y: 18}
     reverse: false
   - id: 1
     length: 40
     position:
-      start: {x: 102, y: 20}
-      end: {x: 61, y: 21}
-    reverse: true
+      start: {x: 105, y: 19}
+      end: {x: 139, y: 22}
+    reverse: false
+  - id: 2
+    length: 40
+    position:
+      start: {x: 106, y: 44}
+      end: {x: 140, y: 45}
+    reverse: false
+  - id: 3
+    length: 40
+    position:
+      start: {x: 123, y: 16}
+      end: {x: 182, y: 9}
+    reverse: false
+  - id: 4
+    length: 40
+    position:
+      start: {x: 137, y: 35}
+      end: {x: 183, y: 33}
+    reverse: false
 
 output:
   type: "preview"  # Start with web preview only
@@ -24,4 +42,6 @@ webServer:
   port: 8080
 
 # Path to a static background image to display behind the LED strips
+# NOTE: Do NOT place this inside src/main/resources/web/ — that directory
+# is wiped by `npm run build` (emptyOutDir: true in vite.config.ts)
 backgroundImage: "/Users/tlberglund/Pictures/office-background.jpg"

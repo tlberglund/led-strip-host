@@ -12,8 +12,21 @@ export default defineConfig({
       proxy: {
          '/api': 'http://localhost:8080',
          '/viewport': {
-            target: 'ws://localhost:8080',
+            target: 'http://localhost:8080',
             ws: true,
+            timeout: 0,
+            proxyTimeout: 0,
+            configure: (proxy) => {
+               proxy.on('error', (_err, _req, res) => {
+                  if (res && 'writeHead' in res && !res.headersSent) {
+                     res.writeHead(502);
+                     res.end();
+                  }
+               });
+               proxy.on('proxyReqWs', (_proxyReq, _req, socket) => {
+                  socket.on('error', () => {});
+               });
+            },
          },
       },
    },
