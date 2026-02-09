@@ -8,7 +8,7 @@ export function useViewportRenderer(
    viewportRef: React.MutableRefObject<ViewportMessage | null>,
    onResolutionChange?: (width: number, height: number) => void,
 ): void {
-   const lastRenderedRef = useRef<string | null>(null);
+   const lastRenderedRef = useRef<Uint8Array | null>(null);
    const sizeRef = useRef({ width: 0, height: 0 });
    const onResolutionChangeRef = useRef(onResolutionChange);
    onResolutionChangeRef.current = onResolutionChange;
@@ -33,12 +33,7 @@ export function useViewportRenderer(
                onResolutionChangeRef.current?.(viewport.width, viewport.height);
             }
 
-            // Decode Base64 RGBA bitmap
-            const binaryString = atob(viewport.data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-               bytes[i] = binaryString.charCodeAt(i);
-            }
+            const bytes = viewport.data;
 
             // Create image data for the canvas
             const imageData = ctx.createImageData(
@@ -46,10 +41,10 @@ export function useViewportRenderer(
                viewport.height * PIXEL_SIZE,
             );
 
-            // Render each pixel from the decoded bitmap
+            // Render each pixel from the RGB bitmap (3 bytes per pixel)
             for (let y = 0; y < viewport.height; y++) {
                for (let x = 0; x < viewport.width; x++) {
-                  const pixelIdx = (y * viewport.width + x) * 4;
+                  const pixelIdx = (y * viewport.width + x) * 3;
                   const r = bytes[pixelIdx];
                   const g = bytes[pixelIdx + 1];
                   const b = bytes[pixelIdx + 2];

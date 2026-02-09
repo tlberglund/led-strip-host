@@ -3,30 +3,20 @@ package com.timberglund.ledhost.web
 import com.timberglund.ledhost.viewport.Viewport
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.ClosedSendChannelException
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import java.util.Base64
-
-/**
- * Message containing viewport state for WebSocket transmission.
- * Uses Base64-encoded bitmap for efficiency.
- */
-@Serializable
-data class ViewportMessage(
-   val type: String = "viewport",
-   val width: Int,
-   val height: Int,
-   val data: String // Base64-encoded RGBA bitmap
-)
+import java.util.zip.Deflater
 
 /**
  * Manages WebSocket connections and broadcasts viewport updates to all connected clients.
+ *
+ * Wire format (binary frame):
+ *   Byte 0:     flags (0x00 = uncompressed, 0x01 = deflate-compressed)
+ *   Bytes 1-2:  width  (big-endian unsigned 16-bit)
+ *   Bytes 3-4:  height (big-endian unsigned 16-bit)
+ *   Bytes 5+:   RGB pixel data (3 bytes per pixel, row-major), optionally deflate-compressed
  */
 class WebSocketBroadcaster {
    private val clients = mutableListOf<WebSocketSession>()
    private val lock = Any()
-   private val json = Json { encodeDefaults = true }
 
    /**
     * Registers a new WebSocket client.
@@ -60,7 +50,7 @@ class WebSocketBroadcaster {
     */
    suspend fun broadcastViewport(viewport: Viewport) {
       val data = encodeViewport(viewport)
-      val message = Frame.Text(data)
+      val message = Frame.Binary(true, data)
 
       // Get snapshot of clients to avoid holding lock during broadcast
       val clientsSnapshot = synchronized(lock) {
@@ -92,31 +82,52 @@ class WebSocketBroadcaster {
    }
 
    /**
-    * Encodes the viewport as JSON with Base64-encoded RGBA bitmap.
+    * Encodes the viewport as a deflate-compressed binary frame.
+    * Format: [0x01][width:2B][height:2B][deflated RGB data...]
     */
-   private fun encodeViewport(viewport: Viewport): String {
+   private fun encodeViewport(viewport: Viewport): ByteArray {
       val pixelCount = viewport.width * viewport.height
-      val buffer = ByteArray(pixelCount * 4) // RGBA: 4 bytes per pixel
+      val rgbData = ByteArray(pixelCount * 3)
 
+      // Build raw RGB pixel data
       var offset = 0
       for(y in 0 until viewport.height) {
          for(x in 0 until viewport.width) {
             val color = viewport.getPixel(x, y)
-            buffer[offset++] = color.r.toByte()
-            buffer[offset++] = color.g.toByte()
-            buffer[offset++] = color.b.toByte()
-            buffer[offset++] = 255.toByte() // Alpha channel (fully opaque)
+            rgbData[offset++] = color.r.toByte()
+            rgbData[offset++] = color.g.toByte()
+            rgbData[offset++] = color.b.toByte()
          }
       }
 
-      val base64Data = Base64.getEncoder().encodeToString(buffer)
+      // Compress with deflate (BEST_SPEED for minimal latency)
+      val compressed = deflate(rgbData)
 
-      val message = ViewportMessage(
-         width = viewport.width,
-         height = viewport.height,
-         data = base64Data
-      )
+      // Assemble frame: header + compressed data
+      val buffer = ByteArray(5 + compressed.size)
+      buffer[0] = 0x01 // flags: deflate-compressed
+      buffer[1] = (viewport.width shr 8).toByte()
+      buffer[2] = (viewport.width and 0xFF).toByte()
+      buffer[3] = (viewport.height shr 8).toByte()
+      buffer[4] = (viewport.height and 0xFF).toByte()
+      System.arraycopy(compressed, 0, buffer, 5, compressed.size)
 
-      return json.encodeToString(message)
+      return buffer
+   }
+
+   /**
+    * Compresses data using deflate at BEST_SPEED level.
+    */
+   private fun deflate(data: ByteArray): ByteArray {
+      val deflater = Deflater(Deflater.BEST_SPEED)
+      try {
+         deflater.setInput(data)
+         deflater.finish()
+         val output = ByteArray(data.size)
+         val compressedSize = deflater.deflate(output)
+         return output.copyOf(compressedSize)
+      } finally {
+         deflater.end()
+      }
    }
 }

@@ -1,9 +1,9 @@
-// WebSocket viewport message from the server
+// WebSocket viewport message (decoded from binary frame)
+// Wire format: [flags:1B][width:2B][height:2B][RGB pixel data...]
 export interface ViewportMessage {
-   type: 'viewport';
    width: number;
    height: number;
-   data: string; // Base64-encoded RGBA bitmap
+   data: Uint8Array; // Raw RGB bytes (3 per pixel, row-major)
 }
 
 // Stats from GET /api/stats
