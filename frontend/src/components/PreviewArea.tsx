@@ -28,23 +28,25 @@ export function PreviewArea({
 }: PreviewAreaProps) {
    return (
       <div id="preview">
-         {backgroundImageUrl && (
-            <BackgroundImage
-               visible={showBackground}
-               imageUrl={backgroundImageUrl}
+         <div id="preview-content">
+            {backgroundImageUrl && (
+               <BackgroundImage
+                  visible={showBackground}
+                  imageUrl={backgroundImageUrl}
+               />
+            )}
+            <ViewportCanvas
+               visible={showViewport}
+               viewportRef={viewportRef}
+               onResolutionChange={onResolutionChange}
             />
-         )}
-         <ViewportCanvas
-            visible={showViewport}
-            viewportRef={viewportRef}
-            onResolutionChange={onResolutionChange}
-         />
-         <LEDStripsCanvas
-            visible={showStrips}
-            ledStripsRef={ledStripsRef}
-            viewportWidth={viewportWidth}
-            viewportHeight={viewportHeight}
-         />
+            <LEDStripsCanvas
+               visible={showStrips}
+               ledStripsRef={ledStripsRef}
+               viewportWidth={viewportWidth}
+               viewportHeight={viewportHeight}
+            />
+         </div>
       </div>
    );
 }

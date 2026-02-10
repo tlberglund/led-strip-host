@@ -21,7 +21,7 @@ export const ViewportCanvas = memo(function ViewportCanvas({
       <canvas
          ref={canvasRef}
          id="canvas"
-         style={{ display: visible ? 'block' : 'none' }}
+         style={{ visibility: visible ? 'visible' : 'hidden' }}
       />
    );
 });
