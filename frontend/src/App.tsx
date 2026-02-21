@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import { useWebSocket } from './hooks/useWebSocket.ts';
 import { usePatterns } from './hooks/usePatterns.ts';
@@ -69,9 +69,25 @@ function App() {
       }
    }, [patterns]);
 
+   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
    const handleParamChange = useCallback((name: string, value: number | string) => {
-      setParamValues((prev) => ({ ...prev, [name]: value }));
-   }, []);
+      setParamValues((prev) => {
+         const next = { ...prev, [name]: value };
+
+         if (applyDebounceRef.current) clearTimeout(applyDebounceRef.current);
+         applyDebounceRef.current = setTimeout(() => {
+            if (!selectedPattern) return;
+            fetch(`/api/pattern/${selectedPattern}`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(next),
+            }).catch((e) => console.error('Failed to apply pattern:', e));
+         }, 50);
+
+         return next;
+      });
+   }, [selectedPattern]);
 
    const handleApplyPattern = useCallback(async () => {
       if (!selectedPattern) return;

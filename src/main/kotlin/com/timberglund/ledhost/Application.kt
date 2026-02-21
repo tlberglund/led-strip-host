@@ -6,6 +6,7 @@ import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.pattern.patterns.PlasmaPattern
 import com.timberglund.ledhost.pattern.patterns.RainbowPattern
+import com.timberglund.ledhost.pattern.patterns.SolidColorPattern
 import com.timberglund.ledhost.renderer.FrameRenderer
 import com.timberglund.ledhost.viewport.ArrayViewport
 import com.timberglund.ledhost.web.PreviewServer
@@ -47,6 +48,7 @@ fun main(args: Array<String>) {
    val patternRegistry = DefaultPatternRegistry()
    patternRegistry.register(PlasmaPattern())
    patternRegistry.register(RainbowPattern())
+   patternRegistry.register(SolidColorPattern())
    println("Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}")
    println()
 
