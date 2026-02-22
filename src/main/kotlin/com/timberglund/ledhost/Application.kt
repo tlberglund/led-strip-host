@@ -11,32 +11,34 @@ import com.timberglund.ledhost.renderer.FrameRenderer
 import com.timberglund.ledhost.viewport.ArrayViewport
 import com.timberglund.ledhost.web.PreviewServer
 import kotlinx.coroutines.*
+import mu.KotlinLogging
 import kotlin.io.path.Path
 import kotlin.io.path.exists
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Main application entry point for the LED Strip Host.
  */
 fun main(args: Array<String>) {
-   println("LED Strip Host Application")
-   println("=".repeat(40))
+   logger.info { "LED Strip Host Application" }
+   logger.info { "=".repeat(40) }
 
    // Load configuration
    val configPath = args.firstOrNull() ?: "config.yaml"
    val config = if(Path(configPath).exists()) {
-      println("Loading configuration from: $configPath")
+      logger.info { "Loading configuration from: $configPath" }
       Configuration.load(configPath)
    }
    else {
-      println("Configuration file not found: $configPath")
-      println("Using default configuration")
+      logger.warn { "Configuration file not found: $configPath" }
+      logger.info { "Using default configuration" }
       createDefaultConfiguration()
    }
 
-   println("Viewport: ${config.viewport.width}x${config.viewport.height}")
-   println("Target FPS: ${config.targetFPS}")
-   println("Strips: ${config.strips.size}")
-   println()
+   logger.info { "Viewport: ${config.viewport.width}x${config.viewport.height}" }
+   logger.info { "Target FPS: ${config.targetFPS}" }
+   logger.info { "Strips: ${config.strips.size}" }
 
    // Create viewport
    val viewport = ArrayViewport(config.viewport.width, config.viewport.height)
@@ -49,8 +51,7 @@ fun main(args: Array<String>) {
    patternRegistry.register(PlasmaPattern())
    patternRegistry.register(RainbowPattern())
    patternRegistry.register(SolidColorPattern())
-   println("Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}")
-   println()
+   logger.info { "Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}" }
 
    // Create preview server (before renderer so we can reference it in the callback)
    var previewServer: PreviewServer? = null
@@ -92,34 +93,31 @@ fun main(args: Array<String>) {
       }
 
       previewServer.start()
-      println()
    }
 
    // Set initial pattern
    val initialPattern = patternRegistry.get("Rainbow")
    if(initialPattern != null) {
-      println("Starting with Rainbow pattern")
+      logger.info { "Starting with Rainbow pattern" }
       renderer.setPattern(initialPattern, PatternParameters())
    }
 
    // Start rendering
    renderer.start()
 
-   // Print status
-   println()
-   println("Application started successfully!")
+   // Log status
+   logger.info { "Application started successfully!" }
    if(config.webServer.enabled) {
-      println("Web preview: http://localhost:${config.webServer.port}")
+      logger.info { "Web preview: http://localhost:${config.webServer.port}" }
    }
-   println()
-   println("Press Ctrl+C to stop")
+   logger.info { "Press Ctrl+C to stop" }
 
    // Keep application running
    Runtime.getRuntime().addShutdownHook(Thread {
-      println("\nShutting down...")
+      logger.info { "Shutting down..." }
       renderer.stop()
       previewServer?.stop()
-      println("Goodbye!")
+      logger.info { "Goodbye!" }
    })
 
    // Wait forever (until Ctrl+C)

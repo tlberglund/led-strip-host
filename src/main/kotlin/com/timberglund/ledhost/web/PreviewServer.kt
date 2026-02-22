@@ -23,8 +23,11 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import mu.KotlinLogging
 import java.io.File
 import java.time.Duration
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Web server providing real-time LED strip preview and control interface.
@@ -189,7 +192,7 @@ class PreviewServer(private val port: Int,
       }
 
       server?.start(wait = false)
-      println("Preview server running at http://localhost:$port")
+      logger.info { "Preview server running at http://localhost:$port" }
    }
 
    /**

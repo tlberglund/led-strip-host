@@ -4,8 +4,11 @@ import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Viewport
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Statistics about rendering performance.
@@ -130,7 +133,7 @@ class FrameRenderer(
          }
          catch (e: Exception) {
             // Log error but continue rendering
-            System.err.println("Error in frame callback: ${e.message}")
+            logger.error(e) { "Error in frame callback" }
          }
 
          // Update statistics
