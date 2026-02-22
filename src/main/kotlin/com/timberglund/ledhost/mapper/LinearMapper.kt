@@ -49,7 +49,8 @@ class LinearMapper(private val layouts: List<StripLayout>) : PixelMapper {
          for(i in scaledPoints.indices) {
             val ledIndex = if (layout.reverse) {
                layout.length - 1 - i
-            } else {
+            } 
+            else {
                i
             }
 

@@ -10,7 +10,7 @@ export default defineConfig({
    },
    server: {
       proxy: {
-         '/api': 'http://localhost:8080',
+         '/api': 'http://rpi-dev-1.local:8080',
       },
    },
 })
