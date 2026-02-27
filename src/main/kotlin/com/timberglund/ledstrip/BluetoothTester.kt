@@ -1,9 +1,6 @@
 package com.timberglund.ledstrip
 
 import com.timberglund.ledstrip.ble.*
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import kotlin.random.Random
 import kotlinx.coroutines.*
 import mu.KotlinLogging
 
@@ -75,29 +72,16 @@ class BluetoothTester {
    }
 
    /**
-    * Sends a test frame (244-byte message with random payload) to all connected strips.
+    * Sends a pre-built frame to a single strip.
     */
-   suspend fun sendTestFrame() {
-      if(!isAnyConnected) return
-
-      val payloadLen = 240
-      val message = ByteBuffer.allocate(4 + payloadLen)
-         .apply {
-            order(ByteOrder.LITTLE_ENDIAN)
-            putShort(1)
-            putShort((payloadLen + 2).toShort())
-            put(Random.nextBytes(payloadLen))
-         }
-         .array()
-
-      for((stripId, client) in clients) {
-         if(!client.isConnected) continue
-         try {
-            client.writeGattCharacteristic(CHAR_UUID, message, withResponse = false)
-         }
-         catch(e: Exception) {
-            logger.error(e) { "Failed to send frame to strip $stripId: ${e.message}" }
-         }
+   suspend fun sendFrame(stripId: Int, data: ByteArray) {
+      val client = clients[stripId] ?: return
+      if(!client.isConnected) return
+      try {
+         client.writeGattCharacteristic(CHAR_UUID, data, withResponse = false)
+      }
+      catch(e: Exception) {
+         logger.error(e) { "Failed to send frame to strip $stripId: ${e.message}" }
       }
    }
 

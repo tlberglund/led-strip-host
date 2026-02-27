@@ -11,11 +11,12 @@ import kotlin.math.roundToInt
  * @property g Green component (0-255)
  * @property b Blue component (0-255)
  */
-data class Color(val r: Int, val g: Int, val b: Int) {
+data class Color(val r: Int, val g: Int, val b: Int, val brightness: Int = 31) {
    init {
       require(r in 0..255) { "Red component must be in range 0..255, got $r" }
       require(g in 0..255) { "Green component must be in range 0..255, got $g" }
       require(b in 0..255) { "Blue component must be in range 0..255, got $b" }
+      require(brightness in 0..31) { "Brightness must be in range 0..31, got $brightness" }
    }
 
    /**
@@ -62,7 +63,7 @@ data class Color(val r: Int, val g: Int, val b: Int) {
       * @param v Value/Brightness (0.0-1.0)
       * @return Color in RGB space
       */
-      fun fromHSV(h: Float, s: Float, v: Float): Color {
+      fun fromHSV(h: Float, s: Float, v: Float, brightness: Int = 31): Color {
          val hNorm = ((h % 360f) + 360f) % 360f  // Normalize to 0-360
          val sNorm = s.coerceIn(0f, 1f)
          val vNorm = v.coerceIn(0f, 1f)
@@ -83,7 +84,8 @@ data class Color(val r: Int, val g: Int, val b: Int) {
          return Color(
                ((rPrime + m) * 255f).roundToInt(),
                ((gPrime + m) * 255f).roundToInt(),
-               ((bPrime + m) * 255f).roundToInt()
+               ((bPrime + m) * 255f).roundToInt(),
+               brightness.coerceIn(0, 31)
          )
       }
 
@@ -99,7 +101,8 @@ data class Color(val r: Int, val g: Int, val b: Int) {
          return Color(
                (c1.r * (1 - r) + c2.r * r).roundToInt(),
                (c1.g * (1 - r) + c2.g * r).roundToInt(),
-               (c1.b * (1 - r) + c2.b * r).roundToInt()
+               (c1.b * (1 - r) + c2.b * r).roundToInt(),
+               (c1.brightness * (1 - r) + c2.brightness * r).roundToInt().coerceIn(0, 31)
          )
       }
 

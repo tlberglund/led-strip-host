@@ -5,6 +5,7 @@ import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Color
 import com.timberglund.ledhost.viewport.Viewport
+import kotlin.math.roundToInt
 
 /**
  * Rainbow pattern that creates a scrolling rainbow effect across the viewport.
@@ -16,15 +17,17 @@ class RainbowPattern : Pattern {
 
    override val parameters = listOf(
       ParameterDef.FloatParam("speed", "Speed", 0.1f, 5f, 0.1f, 1f),
-      ParameterDef.FloatParam("brightness", "Brightness", 0f, 1f, 0.05f, 1f),
+      ParameterDef.FloatParam("value", "Value", 0f, 1f, 0.05f, 1f),
       ParameterDef.FloatParam("saturation", "Saturation", 0f, 1f, 0.05f, 1f),
       ParameterDef.SelectParam("direction", "Direction", listOf("horizontal", "vertical", "diagonal"), "horizontal"),
+      ParameterDef.IntParam("brightness", "Brightness", 0, 31, 1, 31),
    )
 
    private var hueOffset = 0f
    private var speed = 1f
    private var saturation = 1f
-   private var brightness = 1f
+   private var value = 1f
+   private var brightness = 31
    private var direction = Direction.HORIZONTAL
 
    enum class Direction {
@@ -36,10 +39,11 @@ class RainbowPattern : Pattern {
    override fun initialize(viewport: Viewport, params: PatternParameters) {
       speed = params.get("speed", 1f)
       saturation = params.get("saturation", 1f).coerceIn(0f, 1f)
-      brightness = params.get("brightness", 1f).coerceIn(0f, 1f)
+      value = params.get("value", 1f).coerceIn(0f, 1f)
+      brightness = params.get("brightness", 31f).roundToInt().coerceIn(0, 31)
 
       val directionStr = params.get("direction", "horizontal")
-      direction = when (directionStr.lowercase()) {
+      direction = when(directionStr.lowercase()) {
          "vertical" -> Direction.VERTICAL
          "diagonal" -> Direction.DIAGONAL
          else -> Direction.HORIZONTAL
@@ -70,7 +74,7 @@ class RainbowPattern : Pattern {
       for(y in 0 until viewport.height) {
          for(x in 0 until viewport.width) {
             val hue = (hueOffset + (x * 360f / viewport.width)) % 360f
-            val color = Color.fromHSV(hue, saturation, brightness)
+            val color = Color.fromHSV(hue, saturation, value, brightness)
             viewport.setPixel(x, y, color)
          }
       }
@@ -80,7 +84,7 @@ class RainbowPattern : Pattern {
       for(y in 0 until viewport.height) {
          for(x in 0 until viewport.width) {
             val hue = (hueOffset + (y * 360f / viewport.height)) % 360f
-            val color = Color.fromHSV(hue, saturation, brightness)
+            val color = Color.fromHSV(hue, saturation, value, brightness)
             viewport.setPixel(x, y, color)
          }
       }
@@ -92,7 +96,7 @@ class RainbowPattern : Pattern {
          for(x in 0 until viewport.width) {
             val distance = (x + y).toFloat()
             val hue = (hueOffset + (distance * 360f / (maxDimension * 2))) % 360f
-            val color = Color.fromHSV(hue, saturation, brightness)
+            val color = Color.fromHSV(hue, saturation, value, brightness)
             viewport.setPixel(x, y, color)
          }
       }

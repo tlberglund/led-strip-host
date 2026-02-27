@@ -1,7 +1,13 @@
 package com.timberglund.ledhost
 
 import com.timberglund.ledhost.config.Configuration
+import com.timberglund.ledhost.config.StripLayout
 import com.timberglund.ledhost.mapper.LinearMapper
+import com.timberglund.ledhost.mapper.PixelMapper
+import com.timberglund.ledhost.viewport.Color
+import com.timberglund.ledhost.viewport.Viewport
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.pattern.patterns.PlasmaPattern
@@ -72,9 +78,12 @@ fun main(args: Array<String>) {
    val renderer = FrameRenderer(targetFPS = config.targetFPS,
                                 viewport = viewport,
                                 onFrameRendered = { renderedViewport ->
-         // Send frame to BLE strips
+         // Build strip frames synchronously while viewport is stable, then send
+         val frames = buildStripFrames(renderedViewport, mapper, config.strips)
          GlobalScope.launch {
-            bleManager.sendTestFrame()
+            for((stripId, frame) in frames) {
+               bleManager.sendFrame(stripId, frame)
+            }
          }
 
          // Broadcast to web clients (throttled, non-blocking)
@@ -136,6 +145,45 @@ fun main(args: Array<String>) {
    // Wait forever (until Ctrl+C)
    Thread.currentThread().join()
 }
+
+/**
+ * Builds BLE frame bytes for every configured strip from the current viewport.
+ * Must be called while the viewport is stable (i.e. synchronously in the render callback).
+ */
+private fun buildStripFrames(
+   viewport: Viewport,
+   mapper: PixelMapper,
+   strips: List<StripLayout>): Map<Int, ByteArray> {
+   val ledColors = mapper.mapViewportToLEDs(viewport)
+   return strips.associate { strip ->
+      val leds = Array(strip.length) { Color.BLACK }
+      for((address, color) in ledColors) {
+         if(address.stripId == strip.id && address.ledIndex in 0 until strip.length) {
+            leds[address.ledIndex] = color
+         }
+      }
+      strip.id to buildStripFrame(leds)
+   }
+}
+
+/**
+ * Serializes an array of colors into the BLE frame format:
+ * 2-byte command (0x0001), 2-byte LED count, then per-LED: brightness, R, G, B.
+ */
+private fun buildStripFrame(leds: Array<Color>): ByteArray =
+   ByteBuffer.allocate(4 + leds.size * 4)
+      .apply {
+         order(ByteOrder.LITTLE_ENDIAN)
+         putShort(0x0001)
+         putShort(leds.size.toShort())
+         for(led in leds) {
+            put(led.brightness.toByte())
+            put(led.r.toByte())
+            put(led.g.toByte())
+            put(led.b.toByte())
+         }
+      }
+      .array()
 
 /**
  * Creates a default configuration for demonstration purposes.
