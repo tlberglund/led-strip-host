@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.random.Random
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import mu.KotlinLogging
 
 // UUIDs from data_service.gatt
@@ -13,167 +12,111 @@ private const val CHAR_UUID = "b8e3c9f2-4d5c-4b9f-c6d7-2e3f4d5c6b7a"
 
 private val logger = KotlinLogging.logger {}
 
-
 /**
- * Bluetooth Low Energy tester for Pico devices.
+ * Manages BLE connections to LED strip devices.
  *
- * Uses platform-specific BLE implementations via the BlePlatform factory.
- * Supported platforms: macOS (with USB dongle), Raspberry Pi
+ * Scans for devices whose names start with "strip" (e.g. strip00, strip01),
+ * connects to all of them, and maps each one by the numeric ID parsed from
+ * the device name, corresponding to strip IDs in the YAML config.
  */
 class BluetoothTester {
    private val platform = BlePlatform.getInstance()
-   private var client: BleClient? = null
-   private var lastResponse: ByteArray? = null
-   private val responseChannel = Channel<ByteArray>(Channel.CONFLATED)
+   private val clients: MutableMap<Int, BleClient> = mutableMapOf()
 
-   /** Callback for when notifications are received */
+   val isAnyConnected: Boolean get() = clients.values.any { it.isConnected }
+
    private fun notificationHandler(sender: String, data: ByteArray) {
-      lastResponse = data
-      responseChannel.trySend(data)
-
-      println("\n<< Received: ${data.size} bytes")
-      println("   Hex: ${data.toHexString()}")
-      println("   Data: ${data.contentToString()}")
+      logger.debug { "Notification from $sender: ${data.size} bytes" }
    }
 
-   /** Scan for and connect to a Pico device */
-   suspend fun scanAndConnect(): Boolean {
-      println("Scanning for Pico devices...")
+   private fun parseStripId(name: String): Int? =
+      name.removePrefix("strip").toIntOrNull()
+
+   /**
+    * Scans for all strip devices and connects to each one.
+    * Returns the number of successfully connected strips.
+    */
+   suspend fun scanAndConnect(): Int {
+      logger.info { "Scanning for strip devices..." }
 
       val scanner = platform.createScanner()
       val devices = scanner.discover(timeout = 10000)
+      var connected = 0
 
-      // Alternative: find by specific address
-      // val device = scanner.findDeviceByAddress("2C:CF:67:CA:97:70", timeout = 10000)
-      // val devices = if (device != null) listOf(device) else emptyList()
+      for(device in devices) {
+         val name = device.name ?: continue
+         if(!name.startsWith("strip")) continue
 
-      for (device in devices) {
-         if (device.name?.startsWith("strip") == true) {
-            println("Found: ${device.name} - ${device.address}")
+         val stripId = parseStripId(name) ?: continue
 
-            try {
-               client = platform.createClient(device.address)
-               client?.connect()
+         logger.info { "Found: $name (${device.address}), strip ID $stripId" }
 
-               // Subscribe to notifications
-               client?.startNotify(CHAR_UUID) { sender, data -> notificationHandler(sender, data) }
-
-               println("Connected to ${device.name} (${device.address})")
-               println("Subscribed to notifications on $CHAR_UUID\n")
-               return true
-            } catch (e: Exception) {
-               println("Failed to connect to ${device.name}: ${e.message}")
-               return false
-            }
+         try {
+            val client = platform.createClient(device.address)
+            client.connect()
+            client.startNotify(CHAR_UUID) { sender, data -> notificationHandler(sender, data) }
+            clients[stripId] = client
+            connected++
+            logger.info { "Connected to $name (${device.address})" }
+         }
+         catch(e: Exception) {
+            logger.error(e) { "Failed to connect to $name: ${e.message}" }
          }
       }
 
-      println("No Pico devices found")
-      return false
-   }
-
-   /** Send 244-byte message and wait for response */
-   suspend fun sendAndReceive() {
-      val currentClient = client
-      if(currentClient == null || !currentClient.isConnected) {
-         println("Not connected!")
-         return
+      if(connected == 0) {
+         logger.warn { "No strip devices found" }
+      }
+      else {
+         logger.info { "Connected to $connected strip(s): IDs ${clients.keys.sorted()}" }
       }
 
-      // Create 244-byte message: 4 bytes length + 240 bytes random data
+      return connected
+   }
+
+   /**
+    * Sends a test frame (244-byte message with random payload) to all connected strips.
+    */
+   suspend fun sendTestFrame() {
+      if(!isAnyConnected) return
+
       val payloadLen = 240
-      val randomBytes = Random.nextBytes(payloadLen)
+      val message = ByteBuffer.allocate(4 + payloadLen)
+         .apply {
+            order(ByteOrder.LITTLE_ENDIAN)
+            putShort(1)
+            putShort((payloadLen + 2).toShort())
+            put(Random.nextBytes(payloadLen))
+         }
+         .array()
 
-      // Pack the message: 2 bytes for ID (1), 2 bytes for length (payloadLen + 2), then payload
-      val message =
-              ByteBuffer.allocate(4 + payloadLen)
-                      .apply {
-                         order(ByteOrder.LITTLE_ENDIAN)
-                         putShort(1) // ID
-                         putShort((payloadLen + 2).toShort()) // Length
-                         put(randomBytes)
-                      }
-                      .array()
-
-      println(">> Sending: ${message.size} bytes (4 byte length + $payloadLen random bytes)")
-
-      // Extract the length header for display
-      val lengthHeader = ByteBuffer.wrap(message, 0, 4).apply { order(ByteOrder.LITTLE_ENDIAN) }.int
-      println("   Length header: $lengthHeader")
-      println("   First 16 bytes: ${message.take(16).toByteArray().toHexString()}")
-
-      try {
-         // Clear previous response
-         lastResponse = null
-         responseChannel.tryReceive() // Clear channel
-
-         // Send the data
-         currentClient.writeGattCharacteristic(CHAR_UUID, message, withResponse = false)
-
-         // Wait for response (with timeout)
+      for((stripId, client) in clients) {
+         if(!client.isConnected) continue
          try {
-            withTimeout(2000) { responseChannel.receive() }
+            client.writeGattCharacteristic(CHAR_UUID, message, withResponse = false)
          }
-         catch (e: TimeoutCancellationException) {
-            println("   (No response received within 2 seconds)")
+         catch(e: Exception) {
+            logger.error(e) { "Failed to send frame to strip $stripId: ${e.message}" }
          }
-      }
-      catch (e: Exception) {
-         println("Error sending data: ${e.message}")
       }
    }
 
-   /** Disconnect from device */
-   suspend fun disconnect() {
-      client?.let { c ->
+   /**
+    * Disconnects from all connected strips.
+    */
+   suspend fun disconnectAll() {
+      for((stripId, client) in clients) {
          try {
-            if (c.isConnected) {
-               c.stopNotify(CHAR_UUID)
-               c.disconnect()
-               println("\nDisconnected")
+            if(client.isConnected) {
+               client.stopNotify(CHAR_UUID)
+               client.disconnect()
+               logger.info { "Disconnected from strip $stripId" }
             }
-         } catch (e: Exception) {
-            println("Error disconnecting: ${e.message}")
+         }
+         catch(e: Exception) {
+            logger.error(e) { "Error disconnecting from strip $stripId: ${e.message}" }
          }
       }
+      clients.clear()
    }
-
-   /** Main test loop */
-   suspend fun run() {
-      // Configure logging level for BLE library
-      // (This would depend on your chosen BLE library)
-
-      if (!scanAndConnect()) {
-         return
-      }
-
-      println("Press Enter to send a message, 'q' to quit\n")
-
-      try {
-         while (true) {
-            // Read input in non-blocking way
-            val userInput = withContext(Dispatchers.IO) { readLine() ?: "" }
-
-            if (userInput.trim().lowercase() == "q") {
-               break
-            }
-
-            sendAndReceive()
-            println() // Extra newline for readability
-         }
-      } catch (e: CancellationException) {
-         println("\nInterrupted by user")
-      } finally {
-         disconnect()
-      }
-   }
-}
-
-/** Extension function to convert ByteArray to hex string */
-private fun ByteArray.toHexString(): String = joinToString("") { "%02x".format(it) }
-
-/** Main entry point */
-suspend fun main() {
-   val tester = BluetoothTester()
-   tester.run()
 }

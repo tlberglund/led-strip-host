@@ -5,6 +5,7 @@ import com.timberglund.ledhost.mapper.LinearMapper
 import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.pattern.patterns.PlasmaPattern
+import com.timberglund.ledstrip.BluetoothTester
 import com.timberglund.ledhost.pattern.patterns.RainbowPattern
 import com.timberglund.ledhost.pattern.patterns.SolidColorPattern
 import com.timberglund.ledhost.renderer.FrameRenderer
@@ -53,6 +54,12 @@ fun main(args: Array<String>) {
    patternRegistry.register(SolidColorPattern())
    logger.info { "Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}" }
 
+   // Create and start BLE strip manager
+   val bleManager = BluetoothTester()
+   GlobalScope.launch {
+      bleManager.scanAndConnect()
+   }
+
    // Create preview server (before renderer so we can reference it in the callback)
    var previewServer: PreviewServer? = null
 
@@ -65,6 +72,11 @@ fun main(args: Array<String>) {
    val renderer = FrameRenderer(targetFPS = config.targetFPS,
                                 viewport = viewport,
                                 onFrameRendered = { renderedViewport ->
+         // Send frame to BLE strips
+         GlobalScope.launch {
+            bleManager.sendTestFrame()
+         }
+
          // Broadcast to web clients (throttled, non-blocking)
          val now = System.currentTimeMillis()
          if (now - lastBroadcastTime >= broadcastIntervalMs) {
@@ -117,6 +129,7 @@ fun main(args: Array<String>) {
       logger.info { "Shutting down..." }
       renderer.stop()
       previewServer?.stop()
+      runBlocking { bleManager.disconnectAll() }
       logger.info { "Goodbye!" }
    })
 
