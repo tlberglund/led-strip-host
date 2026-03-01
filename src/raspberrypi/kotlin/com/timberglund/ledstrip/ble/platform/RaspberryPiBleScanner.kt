@@ -11,27 +11,38 @@ private val logger = KotlinLogging.logger {}
 
 class RaspberryPiBleScanner : BleScanner {
 
+   // Handler swapped by each scan call; all discovered peripherals are forwarded to it.
+   private var onDiscovered: (BluetoothPeripheral, ScanResult) -> Unit = { _, _ -> }
+
+   private val callback = object : BluetoothCentralManagerCallback() {
+      override fun onDiscoveredPeripheral(peripheral: BluetoothPeripheral,
+                                          scanResult: ScanResult) {
+         onDiscovered(peripheral, scanResult)
+      }
+   }
+
+   // BluetoothCentralManager registers a D-Bus PairingAgent in its constructor.
+   // Create it exactly once so repeated scans don't trigger "Object already exported".
+   private val central: BluetoothCentralManager by lazy {
+      BluetoothCentralManager(callback)
+   }
+
    override suspend fun discover(timeout: Long): List<BleDevice> = withContext(Dispatchers.IO) {
       val devices = ConcurrentHashMap<String, BleDevice>()
 
-      val callback = object : BluetoothCentralManagerCallback() {
-         override fun onDiscoveredPeripheral(peripheral: BluetoothPeripheral,
-                                             scanResult: ScanResult) {
-            val device = BleDevice(name = peripheral.name,
-                                   address = peripheral.address,
-                                   rssi = scanResult.rssi)
-            devices[peripheral.address] = device
-            logger.debug { "Discovered: ${device.name} - ${device.address}" }
-         }
+      onDiscovered = { peripheral, scanResult ->
+         val device = BleDevice(name = peripheral.name,
+                                address = peripheral.address,
+                                rssi = scanResult.rssi)
+         devices[peripheral.address] = device
+         logger.debug { "Discovered: ${device.name} - ${device.address}" }
       }
 
-      val central = BluetoothCentralManager(callback)
       central.scanForPeripherals()
-
-      // Wait for timeout
       delay(timeout)
-
       central.stopScan()
+
+      onDiscovered = { _, _ -> }
       devices.values.toList()
    }
 
@@ -39,23 +50,16 @@ class RaspberryPiBleScanner : BleScanner {
                                             timeout: Long): BleDevice? = withContext(Dispatchers.IO) {
       var foundDevice: BleDevice? = null
 
-      val callback = object : BluetoothCentralManagerCallback() {
-         override fun onDiscoveredPeripheral(peripheral: BluetoothPeripheral,
-                                             scanResult: ScanResult) {
-            if(peripheral.address == address) {
-               foundDevice = BleDevice(
-                  name = peripheral.name,
-                  address = peripheral.address,
-                  rssi = scanResult.rssi
-               )
-            }
+      onDiscovered = { peripheral, scanResult ->
+         if(peripheral.address == address) {
+            foundDevice = BleDevice(name = peripheral.name,
+                                    address = peripheral.address,
+                                    rssi = scanResult.rssi)
          }
       }
 
-      val central = BluetoothCentralManager(callback)
       central.scanForPeripheralsWithAddresses(arrayOf(address))
 
-      // Wait for result or timeout
       withTimeoutOrNull(timeout) {
          while(foundDevice == null && isActive) {
             delay(100)
@@ -63,6 +67,7 @@ class RaspberryPiBleScanner : BleScanner {
       }
 
       central.stopScan()
+      onDiscovered = { _, _ -> }
       foundDevice
    }
 }
