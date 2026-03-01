@@ -10,7 +10,13 @@
       "Bash(xargs:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
-      "Bash(./gradlew compileKotlin:*)"
+      "Bash(./gradlew compileKotlin:*)",
+      "Bash(openspec new change \"strips-tab-realtime-view\")",
+      "Bash(openspec status --change \"strips-tab-realtime-view\" --json)",
+      "Bash(openspec instructions proposal --change \"strips-tab-realtime-view\" --json)",
+      "Bash(openspec instructions tasks --change \"strips-tab-realtime-view\" --json)",
+      "Bash(openspec status --change \"strips-tab-realtime-view\")",
+      "Bash(openspec instructions apply --change \"strips-tab-realtime-view\" --json)"
     ]
   }
 }

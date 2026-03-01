@@ -3,6 +3,7 @@ package com.timberglund.ledhost.web
 import com.timberglund.ledhost.config.Configuration
 import com.timberglund.ledhost.mapper.PixelMapper
 import com.timberglund.ledstrip.BluetoothTester
+import com.timberglund.ledstrip.StripDiscoveryEvent
 import com.timberglund.ledhost.pattern.ParameterDef
 import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
@@ -22,6 +23,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -47,6 +49,7 @@ class PreviewServer(private val port: Int,
                     private val mapper: PixelMapper,
                     private val bleManager: BluetoothTester? = null) {
    private val broadcaster = WebSocketBroadcaster()
+   private val stripsBroadcaster = StripsWsBroadcaster()
    private var server: ApplicationEngine? = null
    private var currentPattern: Pattern? = null
    private var patternChangeListener: ((String, PatternParameters) -> Unit)? = null
@@ -99,6 +102,19 @@ class PreviewServer(private val port: Int,
                }
                finally {
                   broadcaster.removeClient(this)
+               }
+            }
+
+            // WebSocket endpoint for real-time strip discovery and status updates
+            webSocket("/ws/strips") {
+               stripsBroadcaster.addClient(this)
+               // Send current strip list immediately on connect
+               stripsBroadcaster.sendTo(this, buildStripsUpdate())
+               try {
+                  for(frame in incoming) { /* read-only channel */ }
+               }
+               finally {
+                  stripsBroadcaster.removeClient(this)
                }
             }
 
@@ -233,6 +249,52 @@ class PreviewServer(private val port: Int,
 
       server?.start(wait = false)
       logger.info { "Preview server running at http://localhost:$port" }
+
+      // Collect discovery events and push to /ws/strips clients
+      if(bleManager != null) {
+         server?.application?.launch {
+            bleManager.discoveryEvents.collect { event ->
+               val message = when(event) {
+                  is StripDiscoveryEvent.ScanStarted ->
+                     "Scanning for strip controllers..."
+                  is StripDiscoveryEvent.NewDeviceFound ->
+                     "Found ${event.name} (${event.address})"
+                  is StripDiscoveryEvent.ScanCompleted ->
+                     "Scan complete — ${event.found} new device(s) found"
+                  is StripDiscoveryEvent.ScanError ->
+                     "Scan error: ${event.message}"
+                  is StripDiscoveryEvent.ReconnectAttempted ->
+                     "Reconnecting to ${event.name} (strip ${event.id})..."
+                  is StripDiscoveryEvent.ReconnectSucceeded ->
+                     "Reconnected to ${event.name} (strip ${event.id})"
+                  is StripDiscoveryEvent.ReconnectFailed ->
+                     "Failed to reconnect to ${event.name} (strip ${event.id}): ${event.reason}"
+               }
+               stripsBroadcaster.broadcast(DiscoveryEventMessage(message = message))
+               if(event is StripDiscoveryEvent.NewDeviceFound ||
+                  event is StripDiscoveryEvent.ScanCompleted ||
+                  event is StripDiscoveryEvent.ReconnectSucceeded ||
+                  event is StripDiscoveryEvent.ReconnectFailed) {
+                  stripsBroadcaster.broadcast(buildStripsUpdate())
+               }
+            }
+         }
+      }
+   }
+
+   private fun buildStripsUpdate(): StripsUpdateMessage {
+      val configLengths = configuration.strips.associate { it.id to it.length }
+      val infos = bleManager?.getStripInfos() ?: emptyList()
+      val strips = infos.map { info ->
+         StripStatusResponse(
+            id = info.id,
+            name = info.name,
+            address = info.address,
+            connected = info.connected,
+            length = configLengths[info.id] ?: 0
+         )
+      }
+      return StripsUpdateMessage(strips = strips)
    }
 
    /**
@@ -325,6 +387,24 @@ class PreviewServer(private val port: Int,
       }
    }
 }
+
+/**
+ * WebSocket message pushed to /ws/strips clients: current strip list snapshot.
+ */
+@Serializable
+data class StripsUpdateMessage(
+   val type: String = "strips_update",
+   val strips: List<StripStatusResponse>
+)
+
+/**
+ * WebSocket message pushed to /ws/strips clients: free-text discovery activity entry.
+ */
+@Serializable
+data class DiscoveryEventMessage(
+   val type: String = "discovery_event",
+   val message: String
+)
 
 /**
  * Strip connection status for the frontend.

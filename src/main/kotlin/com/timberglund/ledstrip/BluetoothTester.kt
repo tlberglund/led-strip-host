@@ -2,12 +2,25 @@ package com.timberglund.ledstrip
 
 import com.timberglund.ledstrip.ble.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import mu.KotlinLogging
 
 // UUIDs from data_service.gatt
 private const val CHAR_UUID = "b8e3c9f2-4d5c-4b9f-c6d7-2e3f4d5c6b7a"
 
 private val logger = KotlinLogging.logger {}
+
+sealed class StripDiscoveryEvent {
+   object ScanStarted : StripDiscoveryEvent()
+   data class NewDeviceFound(val name: String, val address: String) : StripDiscoveryEvent()
+   data class ScanCompleted(val found: Int) : StripDiscoveryEvent()
+   data class ScanError(val message: String) : StripDiscoveryEvent()
+   data class ReconnectAttempted(val id: Int, val name: String) : StripDiscoveryEvent()
+   data class ReconnectSucceeded(val id: Int, val name: String) : StripDiscoveryEvent()
+   data class ReconnectFailed(val id: Int, val name: String, val reason: String) : StripDiscoveryEvent()
+}
 
 data class StripConnectionInfo(
    val id: Int,
@@ -27,6 +40,12 @@ class BluetoothTester {
    private val platform = BlePlatform.getInstance()
    private val discoveredDevices: MutableMap<Int, BleDevice> = mutableMapOf()
    private val clients: MutableMap<Int, BleClient> = mutableMapOf()
+
+   private val _discoveryEvents = MutableSharedFlow<StripDiscoveryEvent>(extraBufferCapacity = 64)
+   val discoveryEvents: SharedFlow<StripDiscoveryEvent> = _discoveryEvents.asSharedFlow()
+
+   // Strips the user explicitly disconnected — skipped by the auto-reconnect loop
+   private val manuallyDisconnected: MutableSet<Int> = mutableSetOf()
 
    val isAnyConnected: Boolean get() = clients.values.any { it.isConnected }
 
@@ -81,6 +100,66 @@ class BluetoothTester {
    }
 
    /**
+    * Launches a coroutine that continuously scans for new strip devices at the given interval.
+    * Only devices not already in the registry are added. Emits events on discoveryEvents.
+    */
+   fun startBackgroundScanning(scope: CoroutineScope, intervalMs: Long) {
+      scope.launch(Dispatchers.IO) {
+         while(isActive) {
+            delay(intervalMs)
+            try {
+               logger.debug { "Background scan starting..." }
+               _discoveryEvents.tryEmit(StripDiscoveryEvent.ScanStarted)
+               val scanner = platform.createScanner()
+               val devices = scanner.discover(timeout = 5000)
+               var newFound = 0
+               for(device in devices) {
+                  val name = device.name ?: continue
+                  if(!name.startsWith("strip")) continue
+                  val stripId = parseStripId(name) ?: continue
+                  if(!discoveredDevices.containsKey(stripId)) {
+                     discoveredDevices[stripId] = device
+                     newFound++
+                     logger.info { "Background scan found new strip: $name (${device.address})" }
+                     _discoveryEvents.tryEmit(StripDiscoveryEvent.NewDeviceFound(name, device.address))
+                  }
+               }
+               _discoveryEvents.tryEmit(StripDiscoveryEvent.ScanCompleted(newFound))
+
+               // Auto-reconnect: attempt to restore any dropped connections
+               for((id, device) in discoveredDevices) {
+                  if(manuallyDisconnected.contains(id)) continue
+                  val client = clients[id]
+                  if(client != null && client.isConnected) continue
+                  val name = device.name ?: "strip$id"
+                  _discoveryEvents.tryEmit(StripDiscoveryEvent.ReconnectAttempted(id, name))
+                  val success = try {
+                     connectStrip(id)
+                  }
+                  catch(e: Exception) {
+                     logger.error(e) { "Auto-reconnect failed for strip $id: ${e.message}" }
+                     false
+                  }
+                  if(success) {
+                     logger.info { "Auto-reconnected strip $id ($name)" }
+                     _discoveryEvents.tryEmit(StripDiscoveryEvent.ReconnectSucceeded(id, name))
+                  }
+                  else {
+                     _discoveryEvents.tryEmit(
+                        StripDiscoveryEvent.ReconnectFailed(id, name, "Connection attempt failed")
+                     )
+                  }
+               }
+            }
+            catch(e: Exception) {
+               logger.error(e) { "Background scan error: ${e.message}" }
+               _discoveryEvents.tryEmit(StripDiscoveryEvent.ScanError(e.message ?: "Unknown error"))
+            }
+         }
+      }
+   }
+
+   /**
     * Sends a pre-built frame to a single strip.
     */
    suspend fun sendFrame(stripId: Int, data: ByteArray) {
@@ -113,6 +192,7 @@ class BluetoothTester {
    suspend fun connectStrip(stripId: Int): Boolean {
       val device = discoveredDevices[stripId] ?: return false
       if(clients[stripId]?.isConnected == true) return true
+      manuallyDisconnected.remove(stripId)
       return try {
          val client = platform.createClient(device.address)
          client.connect()
@@ -131,6 +211,7 @@ class BluetoothTester {
     * Disconnects from a single strip by ID.
     */
    suspend fun disconnectStrip(stripId: Int) {
+      manuallyDisconnected.add(stripId)
       val client = clients[stripId] ?: return
       try {
          if(client.isConnected) {

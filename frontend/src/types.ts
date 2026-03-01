@@ -79,6 +79,25 @@ export interface StripStatus {
    length: number;
 }
 
+// WebSocket messages from /ws/strips
+export interface StripsUpdateMessage {
+   type: 'strips_update';
+   strips: StripStatus[];
+}
+
+export interface DiscoveryEventWsMessage {
+   type: 'discovery_event';
+   message: string;
+}
+
+export type StripsWsMessage = StripsUpdateMessage | DiscoveryEventWsMessage;
+
+// Activity log entry for the Strips tab
+export interface ActivityLogEntry {
+   timestamp: string;
+   message: string;
+}
+
 // Pattern info with metadata from GET /api/patterns
 export interface PatternInfo {
    name: string;
