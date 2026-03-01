@@ -61,10 +61,12 @@ fun main(args: Array<String>) {
    logger.info { "Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}" }
 
    // Create and start BLE strip manager
+   val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
    val bleManager = BluetoothTester()
-   GlobalScope.launch {
+   appScope.launch {
       bleManager.scanAndConnect()
    }
+   bleManager.startBackgroundScanning(appScope, config.scanIntervalSeconds * 1000L)
 
    // Create preview server (before renderer so we can reference it in the callback)
    var previewServer: PreviewServer? = null
@@ -139,6 +141,7 @@ fun main(args: Array<String>) {
       logger.info { "Shutting down..." }
       renderer.stop()
       previewServer?.stop()
+      appScope.cancel()
       runBlocking { bleManager.disconnectAll() }
       logger.info { "Goodbye!" }
    })

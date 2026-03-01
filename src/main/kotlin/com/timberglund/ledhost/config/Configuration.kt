@@ -24,7 +24,8 @@ data class Configuration(
    val output: OutputConfig,
    val webServer: WebServerConfig = WebServerConfig(),
    val targetFPS: Int = 60,
-   val backgroundImage: String = ""
+   val backgroundImage: String = "",
+   val scanIntervalSeconds: Int = 15
 ) {
    init {
       require(targetFPS > 0) { "Target FPS must be positive, got $targetFPS" }

@@ -38,6 +38,7 @@ output:
   type: "preview"  # Start with web preview only
 
 targetFPS: 25
+scanIntervalSeconds: 15
 webServer:
   port: 8080
 
