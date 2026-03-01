@@ -5,28 +5,36 @@ export function useBackgroundImage(): string | null {
 
    useEffect(() => {
       let objectUrl: string | null = null;
+      let cancelled = false;
+      let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
       async function fetchImage() {
          try {
             const response = await fetch('/api/background-image');
-            if (!response.ok) {
-               // No background image configured or not found
-               return;
+            if(response.ok) {
+               const blob = await response.blob();
+               if(!cancelled) {
+                  objectUrl = URL.createObjectURL(blob);
+                  setImageUrl(objectUrl);
+               }
+               return; // success — stop retrying
             }
-            const blob = await response.blob();
-            objectUrl = URL.createObjectURL(blob);
-            setImageUrl(objectUrl);
-         } catch {
-            // Silently ignore errors
+         }
+         catch {
+            // network error — fall through to retry
+         }
+
+         if(!cancelled) {
+            retryTimer = setTimeout(fetchImage, 3000);
          }
       }
 
       fetchImage();
 
       return () => {
-         if (objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-         }
+         cancelled = true;
+         if (retryTimer) clearTimeout(retryTimer);
+         if (objectUrl) URL.revokeObjectURL(objectUrl);
       };
    }, []);
 

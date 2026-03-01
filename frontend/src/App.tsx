@@ -7,9 +7,14 @@ import { useLEDStrips } from './hooks/useLEDStrips.ts';
 import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
+import { StripManagerTab } from './components/StripManagerTab.tsx';
 import type { PatternInfo } from './types.ts';
 
+type Tab = 'pattern' | 'strips';
+
 function App() {
+   const [activeTab, setActiveTab] = useState<Tab>('pattern');
+
    // Connection state
    const [connected, setConnected] = useState(false);
 
@@ -108,39 +113,58 @@ function App() {
 
    return (
       <>
-         <h1>LED Strip Preview</h1>
-         <div id="container">
-            <PreviewArea
-               showViewport={showViewport}
-               showStrips={showStrips}
-               showBackground={showBackground}
-               backgroundImageUrl={backgroundImageUrl}
-               viewportRef={viewportRef}
-               ledStripsRef={ledStripsRef}
-               viewportWidth={viewportWidth}
-               viewportHeight={viewportHeight}
-               onResolutionChange={handleResolutionChange}
-            />
-            <ControlsSidebar
-               connected={connected}
-               showViewport={showViewport}
-               showStrips={showStrips}
-               showBackground={showBackground}
-               hasBackgroundImage={backgroundImageUrl !== null}
-               onShowViewportChange={setShowViewport}
-               onShowStripsChange={setShowStrips}
-               onShowBackgroundChange={setShowBackground}
-               patterns={patterns}
-               selectedPattern={selectedPattern}
-               onPatternSelect={handlePatternSelect}
-               parameters={selectedPatternInfo?.parameters ?? []}
-               paramValues={paramValues}
-               onParamChange={handleParamChange}
-               onApplyPattern={handleApplyPattern}
-               stats={stats}
-               resolution={resolution}
-            />
+         <div id="top-nav">
+            <h1>LED Strip Host</h1>
+            <div className="tabs" role="tablist">
+               <button
+                  className={`tab ${activeTab === 'pattern' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('pattern')}>
+                  Pattern
+               </button>
+               <button
+                  className={`tab ${activeTab === 'strips' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('strips')}>
+                  Strips
+               </button>
+            </div>
          </div>
+
+         {activeTab === 'pattern' && (
+            <div id="container">
+               <PreviewArea
+                  showViewport={showViewport}
+                  showStrips={showStrips}
+                  showBackground={showBackground}
+                  backgroundImageUrl={backgroundImageUrl}
+                  viewportRef={viewportRef}
+                  ledStripsRef={ledStripsRef}
+                  viewportWidth={viewportWidth}
+                  viewportHeight={viewportHeight}
+                  onResolutionChange={handleResolutionChange}
+               />
+               <ControlsSidebar
+                  connected={connected}
+                  showViewport={showViewport}
+                  showStrips={showStrips}
+                  showBackground={showBackground}
+                  hasBackgroundImage={backgroundImageUrl !== null}
+                  onShowViewportChange={setShowViewport}
+                  onShowStripsChange={setShowStrips}
+                  onShowBackgroundChange={setShowBackground}
+                  patterns={patterns}
+                  selectedPattern={selectedPattern}
+                  onPatternSelect={handlePatternSelect}
+                  parameters={selectedPatternInfo?.parameters ?? []}
+                  paramValues={paramValues}
+                  onParamChange={handleParamChange}
+                  onApplyPattern={handleApplyPattern}
+                  stats={stats}
+                  resolution={resolution}
+               />
+            </div>
+         )}
+
+         {activeTab === 'strips' && <StripManagerTab active={true} />}
       </>
    );
 }

@@ -70,6 +70,15 @@ export interface ColorParamDef {
 
 export type ParameterDef = FloatParamDef | IntParamDef | SelectParamDef | ColorParamDef;
 
+// Strip connection status from GET /api/strips
+export interface StripStatus {
+   id: number;
+   name: string;
+   address: string;
+   connected: boolean;
+   length: number;
+}
+
 // Pattern info with metadata from GET /api/patterns
 export interface PatternInfo {
    name: string;

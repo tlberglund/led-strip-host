@@ -11,9 +11,13 @@ body {
 }
 
 h1 {
-   margin: 0 0 20px 0;
+   margin: 0 0 16px 0;
    font-size: 24px;
    font-weight: 600;
+}
+
+#top-nav {
+   margin-bottom: 20px;
 }
 
 #container {
@@ -216,6 +220,105 @@ button:active {
    text-transform: none;
    font-weight: 400;
    cursor: pointer;
+}
+
+.tabs {
+   display: flex;
+   border-bottom: 2px solid #333;
+}
+
+.tab {
+   padding: 8px 20px;
+   margin-bottom: -2px;
+   width: auto;
+   background: transparent;
+   border: none;
+   border-bottom: 2px solid transparent;
+   color: #888;
+   cursor: pointer;
+   border-radius: 0;
+   font-size: 14px;
+   font-weight: 500;
+   margin-top: 0;
+}
+
+.tab:hover {
+   color: #ccc;
+   background: transparent;
+}
+
+.tab.active {
+   color: #fff;
+   border-bottom-color: #4a9eff;
+   background: transparent;
+}
+
+.strip-list {
+   display: flex;
+   flex-direction: column;
+   gap: 8px;
+}
+
+.strip-row {
+   background: #1a1a1a;
+   border-radius: 6px;
+   padding: 12px;
+   display: flex;
+   flex-direction: column;
+   gap: 6px;
+}
+
+.strip-row-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   gap: 8px;
+}
+
+.strip-name {
+   font-size: 13px;
+   font-weight: 500;
+}
+
+.strip-badge {
+   font-size: 11px;
+   padding: 2px 8px;
+   border-radius: 3px;
+   font-weight: 500;
+   white-space: nowrap;
+}
+
+.strip-meta {
+   display: flex;
+   justify-content: space-between;
+   font-size: 11px;
+   color: #666;
+   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+}
+
+.strip-action-btn {
+   margin-top: 4px;
+   padding: 7px;
+   font-size: 13px;
+}
+
+.btn-danger {
+   background: #a03030;
+}
+
+.btn-danger:hover {
+   background: #b03030;
+}
+
+.btn-danger:active {
+   background: #903030;
+}
+
+.strips-empty {
+   color: #666;
+   font-size: 13px;
+   text-align: center;
+   margin-top: 20px;
 }
 
 @media (max-width: 768px) {

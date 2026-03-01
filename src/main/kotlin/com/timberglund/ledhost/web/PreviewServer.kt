@@ -2,6 +2,7 @@ package com.timberglund.ledhost.web
 
 import com.timberglund.ledhost.config.Configuration
 import com.timberglund.ledhost.mapper.PixelMapper
+import com.timberglund.ledstrip.BluetoothTester
 import com.timberglund.ledhost.pattern.ParameterDef
 import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
@@ -43,7 +44,8 @@ class PreviewServer(private val port: Int,
                     private val patternRegistry: PatternRegistry,
                     private val renderer: FrameRenderer?,
                     private val configuration: Configuration,
-                    private val mapper: PixelMapper) {
+                    private val mapper: PixelMapper,
+                    private val bleManager: BluetoothTester? = null) {
    private val broadcaster = WebSocketBroadcaster()
    private var server: ApplicationEngine? = null
    private var currentPattern: Pattern? = null
@@ -175,6 +177,44 @@ class PreviewServer(private val port: Int,
                call.respond(stripData)
             }
 
+            get("/api/strips") {
+               val configLengths = configuration.strips.associate { it.id to it.length }
+               val infos = bleManager?.getStripInfos() ?: emptyList()
+               val response = infos.map { info ->
+                  StripStatusResponse(
+                     id = info.id,
+                     name = info.name,
+                     address = info.address,
+                     connected = info.connected,
+                     length = configLengths[info.id] ?: 0
+                  )
+               }
+               call.respond(response)
+            }
+
+            post("/api/strips/{id}/connect") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid strip ID")
+                  return@post
+               }
+               val success = bleManager?.connectStrip(id) ?: false
+               if(success)
+                  call.respond(HttpStatusCode.OK)
+               else
+                  call.respond(HttpStatusCode.ServiceUnavailable, "Failed to connect to strip $id")
+            }
+
+            post("/api/strips/{id}/disconnect") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid strip ID")
+                  return@post
+               }
+               bleManager?.disconnectStrip(id)
+               call.respond(HttpStatusCode.OK)
+            }
+
             get("/api/background-image") {
                val imagePath = configuration.backgroundImage
                if (imagePath.isNotEmpty()) {
@@ -285,6 +325,18 @@ class PreviewServer(private val port: Int,
       }
    }
 }
+
+/**
+ * Strip connection status for the frontend.
+ */
+@Serializable
+data class StripStatusResponse(
+   val id: Int,
+   val name: String,
+   val address: String,
+   val connected: Boolean,
+   val length: Int
+)
 
 /**
  * Pattern info with metadata for the frontend.

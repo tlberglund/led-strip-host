@@ -103,7 +103,8 @@ fun main(args: Array<String>) {
                                     patternRegistry = patternRegistry,
                                     renderer = renderer,
                                     configuration = config,
-                                    mapper = mapper)
+                                    mapper = mapper,
+                                    bleManager = bleManager)
 
       // Handle pattern changes from web interface
       previewServer.setPatternChangeListener { patternName, params ->

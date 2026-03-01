@@ -9,6 +9,13 @@ private const val CHAR_UUID = "b8e3c9f2-4d5c-4b9f-c6d7-2e3f4d5c6b7a"
 
 private val logger = KotlinLogging.logger {}
 
+data class StripConnectionInfo(
+   val id: Int,
+   val name: String,
+   val address: String,
+   val connected: Boolean
+)
+
 /**
  * Manages BLE connections to LED strip devices.
  *
@@ -18,6 +25,7 @@ private val logger = KotlinLogging.logger {}
  */
 class BluetoothTester {
    private val platform = BlePlatform.getInstance()
+   private val discoveredDevices: MutableMap<Int, BleDevice> = mutableMapOf()
    private val clients: MutableMap<Int, BleClient> = mutableMapOf()
 
    val isAnyConnected: Boolean get() = clients.values.any { it.isConnected }
@@ -47,6 +55,7 @@ class BluetoothTester {
          val stripId = parseStripId(name) ?: continue
 
          logger.info { "Found: $name (${device.address}), strip ID $stripId" }
+         discoveredDevices[stripId] = device
 
          try {
             val client = platform.createClient(device.address)
@@ -83,6 +92,57 @@ class BluetoothTester {
       catch(e: Exception) {
          logger.error(e) { "Failed to send frame to strip $stripId: ${e.message}" }
       }
+   }
+
+   /**
+    * Returns info on every strip discovered during the last scan.
+    */
+   fun getStripInfos(): List<StripConnectionInfo> =
+      discoveredDevices.entries.sortedBy { it.key }.map { (id, device) ->
+         StripConnectionInfo(
+            id = id,
+            name = device.name ?: "unknown",
+            address = device.address,
+            connected = clients[id]?.isConnected == true
+         )
+      }
+
+   /**
+    * Connects to a previously discovered strip by ID.
+    */
+   suspend fun connectStrip(stripId: Int): Boolean {
+      val device = discoveredDevices[stripId] ?: return false
+      if(clients[stripId]?.isConnected == true) return true
+      return try {
+         val client = platform.createClient(device.address)
+         client.connect()
+         client.startNotify(CHAR_UUID) { sender, data -> notificationHandler(sender, data) }
+         clients[stripId] = client
+         logger.info { "Reconnected to strip $stripId" }
+         true
+      }
+      catch(e: Exception) {
+         logger.error(e) { "Failed to connect to strip $stripId: ${e.message}" }
+         false
+      }
+   }
+
+   /**
+    * Disconnects from a single strip by ID.
+    */
+   suspend fun disconnectStrip(stripId: Int) {
+      val client = clients[stripId] ?: return
+      try {
+         if(client.isConnected) {
+            client.stopNotify(CHAR_UUID)
+            client.disconnect()
+            logger.info { "Disconnected from strip $stripId" }
+         }
+      }
+      catch(e: Exception) {
+         logger.error(e) { "Error disconnecting from strip $stripId: ${e.message}" }
+      }
+      clients.remove(stripId)
    }
 
    /**

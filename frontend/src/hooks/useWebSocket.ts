@@ -51,11 +51,8 @@ export function useWebSocket(
       function connect() {
          if (disposed) return;
 
-         // In dev mode, connect directly to Ktor to avoid Vite proxy
-         // mangling binary WebSocket frames. In production, connect to same host.
-         const wsUrl = import.meta.env.DEV
-            ? 'ws://localhost:8080/viewport'
-            : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/viewport`;
+         const wsHost = import.meta.env.VITE_WS_HOST ?? window.location.host;
+         const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${wsHost}/viewport`;
 
          ws = new WebSocket(wsUrl);
          ws.binaryType = 'arraybuffer';
