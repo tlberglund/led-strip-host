@@ -233,7 +233,7 @@ class PreviewServerTest {
             assertEquals(HttpStatusCode.OK, response.status)
 
             val body = response.bodyAsText()
-            assertTrue(body.contains("LED Strip Preview"), "Should serve index.html")
+            assertTrue(body.contains("LED Strip Host"), "Should serve index.html")
         } finally {
             client.close()
         }
