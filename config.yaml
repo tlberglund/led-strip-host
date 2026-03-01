@@ -44,4 +44,4 @@ webServer:
 # Path to a static background image to display behind the LED strips
 # NOTE: Do NOT place this inside src/main/resources/web/ — that directory
 # is wiped by `npm run build` (emptyOutDir: true in vite.config.ts)
-backgroundImage: "/Users/tlberglund/Pictures/office-background.jpg"
+backgroundImage: "/home/tlberglund/office-background.jpg"
