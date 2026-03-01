@@ -82,7 +82,7 @@ fun main(args: Array<String>) {
                                 onFrameRendered = { renderedViewport ->
          // Build strip frames synchronously while viewport is stable, then send
          val frames = buildStripFrames(renderedViewport, mapper, config.strips)
-         GlobalScope.launch {
+         appScope.launch {
             for((stripId, frame) in frames) {
                bleManager.sendFrame(stripId, frame)
             }
@@ -92,7 +92,7 @@ fun main(args: Array<String>) {
          val now = System.currentTimeMillis()
          if (now - lastBroadcastTime >= broadcastIntervalMs) {
             lastBroadcastTime = now
-            GlobalScope.launch {
+            appScope.launch {
                previewServer?.broadcastViewport()
             }
          }
