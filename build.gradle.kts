@@ -85,6 +85,17 @@ dependencies {
    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 }
 
+tasks.register<Exec>("buildFrontend") {
+   group = "build"
+   description = "Build the React frontend into src/main/resources/web"
+   workingDir = file("frontend")
+   commandLine("npm", "run", "build")
+}
+
+tasks.named("processResources") {
+   dependsOn("buildFrontend")
+}
+
 tasks.test {
    useJUnitPlatform()
 }
