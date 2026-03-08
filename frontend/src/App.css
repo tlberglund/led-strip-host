@@ -346,10 +346,57 @@ button:active {
 
 .strips-tab-header {
    display: flex;
-   gap: 12px;
+   justify-content: space-between;
    align-items: center;
    min-height: 24px;
+   gap: 12px;
 }
+
+.strips-tab-header-status {
+   display: flex;
+   gap: 12px;
+   align-items: center;
+}
+
+.telemetry-interval-control {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   flex-shrink: 0;
+}
+
+.telemetry-interval-control label {
+   font-size: 11px;
+   color: #666;
+   text-transform: uppercase;
+   letter-spacing: 0.04em;
+   margin: 0;
+   white-space: nowrap;
+}
+
+.telemetry-interval-input {
+   width: 52px;
+   padding: 4px 6px;
+   font-size: 13px;
+   text-align: right;
+   background: #1a1a1a;
+   border: 1px solid #444;
+   border-radius: 4px;
+   color: #fff;
+}
+
+.telemetry-interval-input:focus {
+   outline: none;
+   border-color: #4a9eff;
+}
+
+.telemetry-interval-unit {
+   font-size: 11px;
+   color: #555;
+   min-width: 36px;
+   transition: color 0.2s;
+}
+
 
 .strip-scanning,
 .strip-reconnecting {
