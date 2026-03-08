@@ -49,6 +49,21 @@ class BluetoothTester {
 
    val isAnyConnected: Boolean get() = clients.values.any { it.isConnected }
 
+   /**
+    * Pre-populates the device registry with known strips from the database so
+    * that [getStripInfos] returns them (as disconnected) before any BLE scan.
+    * Only inserts strips not already present; does not overwrite discovered entries.
+    *
+    * @param knownStrips List of (stripId, btName) pairs from the settings DB
+    */
+   fun seedKnownStrips(knownStrips: List<Pair<Int, String>>) {
+      for((stripId, btName) in knownStrips) {
+         if(!discoveredDevices.containsKey(stripId)) {
+            discoveredDevices[stripId] = com.timberglund.ledstrip.ble.BleDevice(name = btName, address = "")
+         }
+      }
+   }
+
    private fun notificationHandler(sender: String, data: ByteArray) {
       logger.debug { "Notification from $sender: ${data.size} bytes" }
    }

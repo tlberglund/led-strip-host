@@ -16,7 +16,16 @@
       "Bash(openspec instructions proposal --change \"strips-tab-realtime-view\" --json)",
       "Bash(openspec instructions tasks --change \"strips-tab-realtime-view\" --json)",
       "Bash(openspec status --change \"strips-tab-realtime-view\")",
-      "Bash(openspec instructions apply --change \"strips-tab-realtime-view\" --json)"
+      "Bash(openspec instructions apply --change \"strips-tab-realtime-view\" --json)",
+      "Bash(openspec new change \"settings-database-ui\")",
+      "Bash(openspec status --change \"settings-database-ui\" --json)",
+      "Bash(openspec instructions proposal --change \"settings-database-ui\" --json)",
+      "Bash(openspec instructions tasks --change \"settings-database-ui\" --json)",
+      "Bash(openspec status --change \"settings-database-ui\")",
+      "Bash(openspec instructions apply --change \"settings-database-ui\" --json)",
+      "Bash(./gradlew dependencies --configuration testRuntimeClasspath 2>&1 | grep -A 2 \"coroutines-core\")",
+      "WebSearch",
+      "WebFetch(domain:ktor.io)"
     ]
   }
 }

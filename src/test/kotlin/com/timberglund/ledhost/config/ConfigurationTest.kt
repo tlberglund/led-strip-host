@@ -64,18 +64,6 @@ class ConfigurationTest {
    }
 
    @Test
-   fun `rejects empty strips list`() {
-      assertFailsWith<IllegalArgumentException> {
-         Configuration(
-            viewport = ViewportConfig(60, 3),
-            strips = emptyList(),
-            output = OutputConfig("preview"),
-            targetFPS = 60
-         )
-      }
-   }
-
-   @Test
    fun `loads configuration from YAML file`() {
       // Create a temporary YAML file
       val tempFile = File.createTempFile("test-config", ".yaml")

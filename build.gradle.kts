@@ -1,6 +1,6 @@
 plugins {
-   kotlin("jvm") version "2.0.21"
-   kotlin("plugin.serialization") version "2.0.21"
+   kotlin("jvm") version "2.3.0"
+   kotlin("plugin.serialization") version "2.3.0"
    application
 }
 
@@ -38,11 +38,10 @@ sourceSets {
 
 dependencies {
    // Core
-   implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
-   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+   implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.0")
 
    // Web Server (Ktor)
-   val ktorVersion = "2.3.7"
+   val ktorVersion = "3.4.0"
    implementation("io.ktor:ktor-server-core:$ktorVersion")
    implementation("io.ktor:ktor-server-netty:$ktorVersion")
    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
@@ -63,12 +62,16 @@ dependencies {
 
    implementation(kotlin("stdlib"))
 
-   // Coroutines for async/await patterns
-   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-
    // Bluetooth LE library - BLESSED-Bluez for both platforms
    implementation("com.github.weliem:blessed-bluez:0.65")
    implementation("com.github.hypfvieh:dbus-java-transport-native-unixsocket:4.3.2")
+
+   // Database (Exposed ORM + PostgreSQL JDBC)
+   val exposedVersion = "0.55.0"
+   implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+   implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
+   implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+   implementation("org.postgresql:postgresql:42.7.3")
 
    // Logging
    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
@@ -78,7 +81,7 @@ dependencies {
    testImplementation(kotlin("test"))
    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
    testImplementation("io.mockk:mockk:1.13.8")
-   testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
+   testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
    testImplementation("io.ktor:ktor-client-core:$ktorVersion")
    testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
    testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")

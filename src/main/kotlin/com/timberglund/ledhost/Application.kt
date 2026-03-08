@@ -2,6 +2,7 @@ package com.timberglund.ledhost
 
 import com.timberglund.ledhost.config.Configuration
 import com.timberglund.ledhost.config.StripLayout
+import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.mapper.LinearMapper
 import com.timberglund.ledhost.mapper.PixelMapper
 import com.timberglund.ledhost.viewport.Color
@@ -31,27 +32,59 @@ fun main(args: Array<String>) {
    logger.info { "LED Strip Host Application" }
    logger.info { "=".repeat(40) }
 
-   // Load configuration
+   // Load configuration (only port and DB connection fields are required)
    val configPath = args.firstOrNull() ?: "config.yaml"
    val config = if(Path(configPath).exists()) {
       logger.info { "Loading configuration from: $configPath" }
       Configuration.load(configPath)
    }
    else {
-      logger.warn { "Configuration file not found: $configPath" }
-      logger.info { "Using default configuration" }
-      createDefaultConfiguration()
+      logger.info { "No configuration file found at $configPath — using defaults" }
+      Configuration()
    }
 
-   logger.info { "Viewport: ${config.viewport.width}x${config.viewport.height}" }
-   logger.info { "Target FPS: ${config.targetFPS}" }
-   logger.info { "Strips: ${config.strips.size}" }
+   // Connect to database and seed on first run
+   val settingsRepository = SettingsRepository()
+   try {
+      settingsRepository.connect(config.databaseUrl, config.databaseUser, config.databasePassword)
+   }
+   catch(e: Exception) {
+      logger.error { "Cannot start: database unreachable at ${config.databaseUrl} — ${e.message}" }
+      System.exit(1)
+   }
+   settingsRepository.seedFromConfig(config)
+
+   // Load runtime settings from database (blocking reads at startup)
+   val (viewportWidth, viewportHeight, targetFPS) = runBlocking {
+      val w = settingsRepository.getSetting("viewportWidth")?.toIntOrNull() ?: config.viewport.width
+      val h = settingsRepository.getSetting("viewportHeight")?.toIntOrNull() ?: config.viewport.height
+      val fps = settingsRepository.getSetting("targetFPS")?.toIntOrNull() ?: config.targetFPS
+      Triple(w, h, fps)
+   }
+
+   logger.info { "Viewport: ${viewportWidth}x${viewportHeight}" }
+   logger.info { "Target FPS: $targetFPS" }
+
+   // Load strips from DB and build StripLayout list for mapper + renderer
+   val dbStrips = runBlocking { settingsRepository.getAllStrips() }
+   val loadedStrips = dbStrips.map { strip ->
+      com.timberglund.ledhost.config.StripLayout(
+         id = strip.id,
+         length = strip.length ?: 0,
+         position = com.timberglund.ledhost.config.StripPosition(
+            start = com.timberglund.ledhost.config.PointConfig(strip.startX ?: 0, strip.startY ?: 0),
+            end = com.timberglund.ledhost.config.PointConfig(strip.endX ?: 0, strip.endY ?: 0)
+         ),
+         reverse = strip.reverse
+      )
+   }
+   logger.info { "Loaded ${loadedStrips.size} strip(s) from database" }
 
    // Create viewport
-   val viewport = ArrayViewport(config.viewport.width, config.viewport.height)
+   val viewport = ArrayViewport(viewportWidth, viewportHeight)
 
    // Create pixel mapper for LED strips
-   val mapper = LinearMapper(config.strips)
+   val mapper = LinearMapper(loadedStrips)
 
    // Create and populate pattern registry
    val patternRegistry = DefaultPatternRegistry()
@@ -60,13 +93,19 @@ fun main(args: Array<String>) {
    patternRegistry.register(SolidColorPattern())
    logger.info { "Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}" }
 
-   // Create and start BLE strip manager
+   // Read scan interval from DB (task 3.4)
+   val scanIntervalSeconds = runBlocking {
+      settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
+   }
+
+   // Create and start BLE strip manager; seed with known strips from DB (task 3.3)
    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
    val bleManager = BluetoothTester()
+   bleManager.seedKnownStrips(dbStrips.map { it.id to it.btName })
    appScope.launch {
       bleManager.scanAndConnect()
    }
-   bleManager.startBackgroundScanning(appScope, config.scanIntervalSeconds * 1000L)
+   bleManager.startBackgroundScanning(appScope, scanIntervalSeconds * 1000L)
 
    // Create preview server (before renderer so we can reference it in the callback)
    var previewServer: PreviewServer? = null
@@ -77,11 +116,11 @@ fun main(args: Array<String>) {
    val broadcastIntervalMs = 1000L / webSocketFPS
 
    // Create frame renderer
-   val renderer = FrameRenderer(targetFPS = config.targetFPS,
+   val renderer = FrameRenderer(targetFPS = targetFPS,
                                 viewport = viewport,
                                 onFrameRendered = { renderedViewport ->
          // Build strip frames synchronously while viewport is stable, then send
-         val frames = buildStripFrames(renderedViewport, mapper, config.strips)
+         val frames = buildStripFrames(renderedViewport, mapper, loadedStrips)
          appScope.launch {
             for((stripId, frame) in frames) {
                bleManager.sendFrame(stripId, frame)
@@ -104,7 +143,7 @@ fun main(args: Array<String>) {
                                     viewport = viewport,
                                     patternRegistry = patternRegistry,
                                     renderer = renderer,
-                                    configuration = config,
+                                    settingsRepository = settingsRepository,
                                     mapper = mapper,
                                     bleManager = bleManager)
 
@@ -189,41 +228,3 @@ private fun buildStripFrame(leds: Array<Color>): ByteArray =
       }
       .array()
 
-/**
- * Creates a default configuration for demonstration purposes.
- */
-private fun createDefaultConfiguration(): Configuration {
-   return Configuration(
-      viewport = com.timberglund.ledhost.config.ViewportConfig(60, 3),
-      strips = listOf(
-         com.timberglund.ledhost.config.StripLayout(
-            id = 0,
-            length = 60,
-            position = com.timberglund.ledhost.config.StripPosition(
-               start = com.timberglund.ledhost.config.PointConfig(0, 0),
-               end = com.timberglund.ledhost.config.PointConfig(59, 0)
-            )
-         ),
-         com.timberglund.ledhost.config.StripLayout(
-            id = 1,
-            length = 60,
-            position = com.timberglund.ledhost.config.StripPosition(
-               start = com.timberglund.ledhost.config.PointConfig(0, 1),
-               end = com.timberglund.ledhost.config.PointConfig(59, 1)
-            ),
-            reverse = true
-         ),
-         com.timberglund.ledhost.config.StripLayout(
-            id = 2,
-            length = 60,
-            position = com.timberglund.ledhost.config.StripPosition(
-               start = com.timberglund.ledhost.config.PointConfig(0, 2),
-               end = com.timberglund.ledhost.config.PointConfig(59, 2)
-            )
-         )
-      ),
-      output = com.timberglund.ledhost.config.OutputConfig("preview"),
-      webServer = com.timberglund.ledhost.config.WebServerConfig(8080, true),
-      targetFPS = 60
-   )
-}

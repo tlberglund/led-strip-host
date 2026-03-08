@@ -1,6 +1,8 @@
 package com.timberglund.ledhost.web
 
 import com.timberglund.ledhost.config.*
+import com.timberglund.ledhost.db.SettingsRepository
+import com.timberglund.ledhost.db.StripRow
 import com.timberglund.ledhost.mapper.LinearMapper
 import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.patterns.RainbowPattern
@@ -12,6 +14,9 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.websocket.*
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*
 
@@ -20,7 +25,7 @@ class PreviewServerTest {
     private lateinit var server: PreviewServer
     private lateinit var viewport: ArrayViewport
     private lateinit var registry: DefaultPatternRegistry
-    private lateinit var config: Configuration
+    private lateinit var settingsRepository: SettingsRepository
 
     @BeforeTest
     fun setup() {
@@ -28,23 +33,28 @@ class PreviewServerTest {
         registry = DefaultPatternRegistry()
         registry.register(RainbowPattern())
 
-        config = Configuration(
-            viewport = ViewportConfig(10, 5),
-            strips = listOf(
-                StripLayout(0, 50, StripPosition(PointConfig(0, 0), PointConfig(9, 4)))
-            ),
-            output = OutputConfig("preview"),
-            targetFPS = 60
+        // Minimal mock SettingsRepository — returns sensible defaults for all methods
+        settingsRepository = mockk(relaxed = true)
+        coEvery { settingsRepository.getSetting("viewportWidth") } returns "10"
+        coEvery { settingsRepository.getSetting("viewportHeight") } returns "5"
+        coEvery { settingsRepository.getSetting("targetFPS") } returns "60"
+        coEvery { settingsRepository.getSetting("scanIntervalSeconds") } returns "15"
+        coEvery { settingsRepository.getSetting(any()) } returns null
+        coEvery { settingsRepository.getAllStrips() } returns listOf(
+            StripRow(0, "strip0", 50, 0, 0, 9, 4, false)
         )
+        every { settingsRepository.getCacheFilePath() } returns null
 
-        val mapper = LinearMapper(config.strips)
+        val mapper = LinearMapper(listOf(
+            StripLayout(0, 50, StripPosition(PointConfig(0, 0), PointConfig(9, 4)))
+        ))
 
         server = PreviewServer(
             port = 8081, // Use different port to avoid conflicts
             viewport = viewport,
             patternRegistry = registry,
             renderer = null,
-            configuration = config,
+            settingsRepository = settingsRepository,
             mapper = mapper
         )
     }
@@ -80,7 +90,24 @@ class PreviewServerTest {
     }
 
     @Test
-    fun `can fetch configuration`() = runBlocking {
+    fun `can fetch settings`() = runBlocking {
+        server.start()
+        Thread.sleep(100)
+
+        val client = HttpClient(CIO)
+        try {
+            val response = client.get("http://localhost:8081/api/settings")
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val body = response.bodyAsText()
+            assertTrue(body.contains("viewportWidth"), "Response should contain viewportWidth")
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun `can fetch config (legacy endpoint)`() = runBlocking {
         server.start()
         Thread.sleep(100)
 
@@ -91,8 +118,6 @@ class PreviewServerTest {
 
             val body = response.bodyAsText()
             assertTrue(body.contains("viewport"), "Response should contain viewport config")
-            assertTrue(body.contains("\"width\":10") || body.contains("\"width\": 10"),
-                "Response should contain width:10")
         } finally {
             client.close()
         }

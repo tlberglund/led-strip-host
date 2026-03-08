@@ -6,23 +6,34 @@ import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
- * Main configuration for the LED Host application.
+ * Application configuration loaded from `config.yaml`.
  *
- * @property viewport Viewport dimensions
- * @property strips LED strip layout configurations
- * @property mapper Pixel mapping configuration
- * @property output Output layer configuration
- * @property webServer Web server configuration
- * @property targetFPS Target frames per second (default: 60)
- * @property backgroundImage Path to a static background image file (optional)
+ * Only `webServer.port` and the database connection fields are actively used at runtime.
+ * The legacy fields (`viewport`, `strips`, `mapper`, `output`, `targetFPS`,
+ * `backgroundImage`, `scanIntervalSeconds`) are retained solely to allow a one-time
+ * seed of the database on first run. They are ignored on subsequent starts.
+ *
+ * @property webServer Web server configuration — port determines the listen port
+ * @property databaseUrl JDBC URL for the PostgreSQL database
+ * @property databaseUser PostgreSQL username
+ * @property databasePassword PostgreSQL password
+ * @property viewport Seeding only — viewport dimensions for first-run DB seed
+ * @property strips Seeding only — strip layouts for first-run DB seed
+ * @property targetFPS Seeding only — target FPS for first-run DB seed
+ * @property backgroundImage Seeding only — background image path for first-run DB seed
+ * @property scanIntervalSeconds Seeding only — scan interval for first-run DB seed
  */
 @Serializable
 data class Configuration(
-   val viewport: ViewportConfig,
-   val strips: List<StripLayout>,
-   val mapper: MapperConfig = MapperConfig(),
-   val output: OutputConfig,
    val webServer: WebServerConfig = WebServerConfig(),
+   val databaseUrl: String = "jdbc:postgresql://localhost:5432/ledstrip",
+   val databaseUser: String = "ledstrip",
+   val databasePassword: String = "ledstrip",
+   // Legacy seeding fields — ignored after first run
+   val viewport: ViewportConfig = ViewportConfig(240, 135),
+   val strips: List<StripLayout> = emptyList(),
+   val mapper: MapperConfig = MapperConfig(),
+   val output: OutputConfig = OutputConfig("preview"),
    val targetFPS: Int = 60,
    val backgroundImage: String = "",
    val scanIntervalSeconds: Int = 15
@@ -31,7 +42,6 @@ data class Configuration(
       require(targetFPS > 0) { "Target FPS must be positive, got $targetFPS" }
       require(viewport.width > 0) { "Viewport width must be positive" }
       require(viewport.height > 0) { "Viewport height must be positive" }
-      require(strips.isNotEmpty()) { "At least one strip must be configured" }
    }
 
    companion object {

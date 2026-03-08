@@ -1,6 +1,6 @@
 package com.timberglund.ledhost.web
 
-import com.timberglund.ledhost.config.Configuration
+import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.mapper.PixelMapper
 import com.timberglund.ledstrip.BluetoothTester
 import com.timberglund.ledstrip.StripDiscoveryEvent
@@ -12,11 +12,13 @@ import com.timberglund.ledhost.renderer.FrameRenderer
 import com.timberglund.ledhost.renderer.RenderStats
 import com.timberglund.ledhost.viewport.Viewport
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.http.content.*
 import io.ktor.server.netty.*
+import kotlin.time.Duration.Companion.seconds
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -26,9 +28,14 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import mu.KotlinLogging
 import java.io.File
-import java.time.Duration
 
 private val logger = KotlinLogging.logger {}
 
@@ -45,12 +52,12 @@ class PreviewServer(private val port: Int,
                     private val viewport: Viewport,
                     private val patternRegistry: PatternRegistry,
                     private val renderer: FrameRenderer?,
-                    private val configuration: Configuration,
+                    private val settingsRepository: SettingsRepository,
                     private val mapper: PixelMapper,
                     private val bleManager: BluetoothTester? = null) {
    private val broadcaster = WebSocketBroadcaster()
    private val stripsBroadcaster = StripsWsBroadcaster()
-   private var server: ApplicationEngine? = null
+   private var server: EmbeddedServer<*, *>? = null
    private var currentPattern: Pattern? = null
    private var patternChangeListener: ((String, PatternParameters) -> Unit)? = null
 
@@ -67,8 +74,8 @@ class PreviewServer(private val port: Int,
    fun start() {
       server = embeddedServer(Netty, port = port) {
          install(WebSockets) {
-            pingPeriod = Duration.ofSeconds(15)
-            timeout = Duration.ofSeconds(15)
+            pingPeriod = 15.seconds
+            timeout = 15.seconds
             maxFrameSize = Long.MAX_VALUE
             masking = false
          }
@@ -83,9 +90,8 @@ class PreviewServer(private val port: Int,
 
          routing {
             // Serve static files (HTML, CSS, JS)
-            static("/") {
-               resources("web")
-               defaultResource("web/index.html")
+            staticResources("/", "web") {
+               default("index.html")
             }
 
             // WebSocket endpoint for real-time viewport updates
@@ -147,7 +153,16 @@ class PreviewServer(private val port: Int,
             }
 
             get("/api/config") {
-               call.respond(configuration)
+               val w = settingsRepository.getSetting("viewportWidth")?.toIntOrNull() ?: 240
+               val h = settingsRepository.getSetting("viewportHeight")?.toIntOrNull() ?: 135
+               val fps = settingsRepository.getSetting("targetFPS")?.toIntOrNull() ?: 60
+               call.respond(buildJsonObject {
+                  putJsonObject("viewport") {
+                     put("width", w)
+                     put("height", h)
+                  }
+                  put("targetFPS", fps)
+               })
             }
 
             get("/api/stats") {
@@ -194,7 +209,7 @@ class PreviewServer(private val port: Int,
             }
 
             get("/api/strips") {
-               val configLengths = configuration.strips.associate { it.id to it.length }
+               val stripLengths = settingsRepository.getAllStrips().associate { it.id to (it.length ?: 0) }
                val infos = bleManager?.getStripInfos() ?: emptyList()
                val response = infos.map { info ->
                   StripStatusResponse(
@@ -202,7 +217,7 @@ class PreviewServer(private val port: Int,
                      name = info.name,
                      address = info.address,
                      connected = info.connected,
-                     length = configLengths[info.id] ?: 0
+                     length = stripLengths[info.id] ?: 0
                   )
                }
                call.respond(response)
@@ -232,17 +247,161 @@ class PreviewServer(private val port: Int,
             }
 
             get("/api/background-image") {
-               val imagePath = configuration.backgroundImage
-               if (imagePath.isNotEmpty()) {
-                  val file = File(imagePath)
-                  if (file.exists() && file.isFile) {
-                     call.respondFile(file)
-                  } else {
-                     call.respond(HttpStatusCode.NotFound, "Background image not found: $imagePath")
-                  }
+               val cachePath = settingsRepository.getCacheFilePath()
+               if(cachePath != null) {
+                  val file = File(cachePath)
+                  call.respondFile(file)
                } else {
-                  call.respond(HttpStatusCode.NotFound, "No background image configured")
+                  call.respond(HttpStatusCode.NotFound, "No background image stored")
                }
+            }
+
+            // ── Settings API ──────────────────────────────────────────────────
+
+            get("/api/settings") {
+               val w = settingsRepository.getSetting("viewportWidth")?.toIntOrNull() ?: 240
+               val h = settingsRepository.getSetting("viewportHeight")?.toIntOrNull() ?: 135
+               val fps = settingsRepository.getSetting("targetFPS")?.toIntOrNull() ?: 60
+               val scan = settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
+               call.respond(ScalarSettingsResponse(
+                  viewportWidth = w,
+                  viewportHeight = h,
+                  targetFPS = fps,
+                  scanIntervalSeconds = scan
+               ))
+            }
+
+            put("/api/settings") {
+               val body = call.receive<Map<String, JsonElement>>()
+               val errors = mutableListOf<String>()
+
+               val fieldMap = mapOf(
+                  "viewportWidth" to body["viewportWidth"],
+                  "viewportHeight" to body["viewportHeight"],
+                  "targetFPS" to body["targetFPS"],
+                  "scanIntervalSeconds" to body["scanIntervalSeconds"]
+               )
+
+               for((key, element) in fieldMap) {
+                  if(element == null) continue
+                  val v = (element as? JsonPrimitive)?.intOrNull
+                  if(v == null || v <= 0) {
+                     errors += "$key must be a positive integer"
+                  } else {
+                     settingsRepository.setSetting(key, v.toString())
+                  }
+               }
+
+               if(errors.isNotEmpty()) {
+                  call.respond(HttpStatusCode.BadRequest, mapOf("errors" to errors))
+               } else {
+                  call.respond(HttpStatusCode.OK)
+               }
+            }
+
+            get("/api/settings/strips") {
+               val strips = settingsRepository.getAllStrips().map { it.toResponse() }
+               call.respond(strips)
+            }
+
+            post("/api/settings/strips") {
+               val req = call.receive<CreateStripRequest>()
+               if(req.btName.isBlank()) {
+                  call.respond(HttpStatusCode.BadRequest, "btName is required")
+                  return@post
+               }
+               if(req.length == null || req.length <= 0) {
+                  call.respond(HttpStatusCode.BadRequest, "length must be a positive integer")
+                  return@post
+               }
+               val id = settingsRepository.createStrip(
+                  btName = req.btName,
+                  length = req.length,
+                  startX = req.startX,
+                  startY = req.startY,
+                  endX = req.endX,
+                  endY = req.endY,
+                  reverse = req.reverse
+               )
+               val created = settingsRepository.getAllStrips().first { it.id == id }
+               call.respond(HttpStatusCode.Created, created.toResponse())
+            }
+
+            put("/api/settings/strips/{id}") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid strip ID")
+                  return@put
+               }
+               val req = call.receive<UpdateStripRequest>()
+               val updated = settingsRepository.updateStrip(
+                  id = id,
+                  btName = req.btName,
+                  length = req.length,
+                  startX = req.startX,
+                  startY = req.startY,
+                  endX = req.endX,
+                  endY = req.endY,
+                  reverse = req.reverse
+               )
+               if(updated)
+                  call.respond(HttpStatusCode.OK)
+               else
+                  call.respond(HttpStatusCode.NotFound, "Strip $id not found")
+            }
+
+            delete("/api/settings/strips/{id}") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid strip ID")
+                  return@delete
+               }
+               // Disconnect any active BLE client before deleting
+               bleManager?.disconnectStrip(id)
+               val deleted = settingsRepository.deleteStrip(id)
+               if(deleted)
+                  call.respond(HttpStatusCode.NoContent)
+               else
+                  call.respond(HttpStatusCode.NotFound, "Strip $id not found")
+            }
+
+            post("/api/settings/background-image") {
+               val maxBytes = 10 * 1024 * 1024 // 10 MB
+               val multipart = call.receiveMultipart()
+               var imageBytes: ByteArray? = null
+               var mimeType = "image/jpeg"
+
+               multipart.forEachPart { part ->
+                  if(part is PartData.FileItem) {
+                     val bytes = part.streamProvider().readBytes()
+                     if(bytes.size > maxBytes) {
+                        imageBytes = null
+                     } else {
+                        imageBytes = bytes
+                        mimeType = part.contentType?.toString() ?: "image/jpeg"
+                     }
+                  }
+                  part.dispose()
+               }
+
+               val bytes = imageBytes
+               if(bytes == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Image required and must be under 10 MB")
+                  return@post
+               }
+
+               settingsRepository.setBackgroundImage(bytes, mimeType)
+               call.respond(HttpStatusCode.OK)
+            }
+
+            delete("/api/settings/background-image") {
+               val cachePath = settingsRepository.getCacheFilePath()
+               if(cachePath == null) {
+                  call.respond(HttpStatusCode.NotFound, "No background image stored")
+                  return@delete
+               }
+               settingsRepository.deleteBackgroundImage()
+               call.respond(HttpStatusCode.NoContent)
             }
          }
       }
@@ -282,8 +441,8 @@ class PreviewServer(private val port: Int,
       }
    }
 
-   private fun buildStripsUpdate(): StripsUpdateMessage {
-      val configLengths = configuration.strips.associate { it.id to it.length }
+   private suspend fun buildStripsUpdate(): StripsUpdateMessage {
+      val stripLengths = settingsRepository.getAllStrips().associate { it.id to (it.length ?: 0) }
       val infos = bleManager?.getStripInfos() ?: emptyList()
       val strips = infos.map { info ->
          StripStatusResponse(
@@ -291,7 +450,7 @@ class PreviewServer(private val port: Int,
             name = info.name,
             address = info.address,
             connected = info.connected,
-            length = configLengths[info.id] ?: 0
+            length = stripLengths[info.id] ?: 0
          )
       }
       return StripsUpdateMessage(strips = strips)
@@ -458,4 +617,59 @@ data class LEDData(
 data class LEDStripData(
    val id: Int,
    val leds: List<LEDData>
+)
+
+// ── Settings API data classes ──────────────────────────────────────────────
+
+@Serializable
+data class ScalarSettingsResponse(
+   val viewportWidth: Int,
+   val viewportHeight: Int,
+   val targetFPS: Int,
+   val scanIntervalSeconds: Int
+)
+
+@Serializable
+data class StripSettingResponse(
+   val id: Int,
+   val btName: String,
+   val length: Int?,
+   val startX: Int?,
+   val startY: Int?,
+   val endX: Int?,
+   val endY: Int?,
+   val reverse: Boolean
+)
+
+@Serializable
+data class CreateStripRequest(
+   val btName: String,
+   val length: Int? = null,
+   val startX: Int? = null,
+   val startY: Int? = null,
+   val endX: Int? = null,
+   val endY: Int? = null,
+   val reverse: Boolean = false
+)
+
+@Serializable
+data class UpdateStripRequest(
+   val btName: String? = null,
+   val length: Int? = null,
+   val startX: Int? = null,
+   val startY: Int? = null,
+   val endX: Int? = null,
+   val endY: Int? = null,
+   val reverse: Boolean? = null
+)
+
+private fun com.timberglund.ledhost.db.StripRow.toResponse() = StripSettingResponse(
+   id = id,
+   btName = btName,
+   length = length,
+   startX = startX,
+   startY = startY,
+   endX = endX,
+   endY = endY,
+   reverse = reverse
 )

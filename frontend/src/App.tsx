@@ -8,9 +8,10 @@ import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
 import { StripManagerTab } from './components/StripManagerTab.tsx';
+import { SettingsTab } from './components/SettingsTab.tsx';
 import type { PatternInfo } from './types.ts';
 
-type Tab = 'pattern' | 'strips';
+type Tab = 'pattern' | 'strips' | 'settings';
 
 function App() {
    const [activeTab, setActiveTab] = useState<Tab>('pattern');
@@ -126,6 +127,11 @@ function App() {
                   onClick={() => setActiveTab('strips')}>
                   Strips
                </button>
+               <button
+                  className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('settings')}>
+                  Settings
+               </button>
             </div>
          </div>
 
@@ -165,6 +171,7 @@ function App() {
          )}
 
          {activeTab === 'strips' && <StripManagerTab active={true} />}
+         {activeTab === 'settings' && <SettingsTab />}
       </>
    );
 }

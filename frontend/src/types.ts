@@ -104,3 +104,34 @@ export interface PatternInfo {
    description: string;
    parameters: ParameterDef[];
 }
+
+// Scalar settings from GET /api/settings
+export interface ScalarSettings {
+   viewportWidth: number;
+   viewportHeight: number;
+   targetFPS: number;
+   scanIntervalSeconds: number;
+}
+
+// Strip setting from GET /api/settings/strips
+export interface StripSetting {
+   id: number;
+   btName: string;
+   length: number | null;
+   startX: number | null;
+   startY: number | null;
+   endX: number | null;
+   endY: number | null;
+   reverse: boolean;
+}
+
+// Input for creating or updating a strip (no id)
+export interface StripSettingInput {
+   btName: string;
+   length: number | null;
+   startX: number | null;
+   startY: number | null;
+   endX: number | null;
+   endY: number | null;
+   reverse: boolean;
+}
