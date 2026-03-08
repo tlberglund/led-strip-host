@@ -272,6 +272,7 @@ class SettingsRepository {
          SettingsTable.insert { it[key] = "viewportHeight"; it[value] = config.viewport.height.toString() }
          SettingsTable.insert { it[key] = "targetFPS"; it[value] = config.targetFPS.toString() }
          SettingsTable.insert { it[key] = "scanIntervalSeconds"; it[value] = config.scanIntervalSeconds.toString() }
+         SettingsTable.insert { it[key] = "telemetryIntervalSeconds"; it[value] = "5" }
       }
 
       for(strip in config.strips) {

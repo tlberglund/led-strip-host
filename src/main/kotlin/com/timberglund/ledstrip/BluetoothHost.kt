@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import mu.KotlinLogging
+import java.util.concurrent.ConcurrentHashMap
 
 // UUIDs from data_service.gatt
 private const val CHAR_UUID = "b8e3c9f2-4d5c-4b9f-c6d7-2e3f4d5c6b7a"
@@ -36,7 +37,7 @@ data class StripConnectionInfo(
  * connects to all of them, and maps each one by the numeric ID parsed from
  * the device name, corresponding to strip IDs in the YAML config.
  */
-class BluetoothTester {
+class BluetoothHost {
    private val platform = BlePlatform.getInstance()
    private val discoveredDevices: MutableMap<Int, BleDevice> = mutableMapOf()
    private val clients: MutableMap<Int, BleClient> = mutableMapOf()
@@ -46,6 +47,9 @@ class BluetoothTester {
 
    // Strips the user explicitly disconnected — skipped by the auto-reconnect loop
    private val manuallyDisconnected: MutableSet<Int> = mutableSetOf()
+
+   // Per-strip notification callbacks, keyed by strip ID
+   private val notificationCallbacks: ConcurrentHashMap<Int, (ByteArray) -> Unit> = ConcurrentHashMap()
 
    val isAnyConnected: Boolean get() = clients.values.any { it.isConnected }
 
@@ -66,6 +70,8 @@ class BluetoothTester {
 
    private fun notificationHandler(sender: String, data: ByteArray) {
       logger.debug { "Notification from $sender: ${data.size} bytes" }
+      val stripId = discoveredDevices.entries.firstOrNull { it.value.address == sender }?.key ?: return
+      notificationCallbacks[stripId]?.invoke(data)
    }
 
    private fun parseStripId(name: String): Int? =
@@ -239,6 +245,39 @@ class BluetoothTester {
          logger.error(e) { "Error disconnecting from strip $stripId: ${e.message}" }
       }
       clients.remove(stripId)
+   }
+
+   /**
+    * Launches a coroutine that sends a telemetry request to each connected strip at [intervalMs]
+    * and invokes [onReading] with the parsed reply. Strips that are not connected at poll time
+    * are skipped silently.
+    */
+   fun startTelemetryPolling(
+      scope: CoroutineScope,
+      intervalMs: Long,
+      onReading: (stripId: Int, reading: TelemetryReading) -> Unit
+   ) {
+      scope.launch(Dispatchers.IO) {
+         while(isActive) {
+            delay(intervalMs)
+            for((stripId, client) in clients.toMap()) {
+               if(!client.isConnected) continue
+               notificationCallbacks[stripId] = { data ->
+                  val reading = parseTelemetryReply(data)
+                  if(reading != null) {
+                     onReading(stripId, reading)
+                  }
+               }
+               try {
+                  client.writeGattCharacteristic(CHAR_UUID, byteArrayOf(0x03, 0x00), withResponse = false)
+               }
+               catch(e: Exception) {
+                  logger.error(e) { "Failed to send telemetry request to strip $stripId: ${e.message}" }
+                  notificationCallbacks.remove(stripId)
+               }
+            }
+         }
+      }
    }
 
    /**

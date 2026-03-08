@@ -2,7 +2,7 @@ package com.timberglund.ledhost.web
 
 import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.mapper.PixelMapper
-import com.timberglund.ledstrip.BluetoothTester
+import com.timberglund.ledstrip.BluetoothHost
 import com.timberglund.ledstrip.StripDiscoveryEvent
 import com.timberglund.ledhost.pattern.ParameterDef
 import com.timberglund.ledhost.pattern.Pattern
@@ -54,7 +54,7 @@ class PreviewServer(private val port: Int,
                     private val renderer: FrameRenderer?,
                     private val settingsRepository: SettingsRepository,
                     private val mapper: PixelMapper,
-                    private val bleManager: BluetoothTester? = null) {
+                    private val bleManager: BluetoothHost? = null) {
    private val broadcaster = WebSocketBroadcaster()
    private val stripsBroadcaster = StripsWsBroadcaster()
    private var server: EmbeddedServer<*, *>? = null
@@ -263,11 +263,13 @@ class PreviewServer(private val port: Int,
                val h = settingsRepository.getSetting("viewportHeight")?.toIntOrNull() ?: 135
                val fps = settingsRepository.getSetting("targetFPS")?.toIntOrNull() ?: 60
                val scan = settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
+               val telemetry = settingsRepository.getSetting("telemetryIntervalSeconds")?.toIntOrNull() ?: 5
                call.respond(ScalarSettingsResponse(
                   viewportWidth = w,
                   viewportHeight = h,
                   targetFPS = fps,
-                  scanIntervalSeconds = scan
+                  scanIntervalSeconds = scan,
+                  telemetryIntervalSeconds = telemetry
                ))
             }
 
@@ -279,7 +281,8 @@ class PreviewServer(private val port: Int,
                   "viewportWidth" to body["viewportWidth"],
                   "viewportHeight" to body["viewportHeight"],
                   "targetFPS" to body["targetFPS"],
-                  "scanIntervalSeconds" to body["scanIntervalSeconds"]
+                  "scanIntervalSeconds" to body["scanIntervalSeconds"],
+                  "telemetryIntervalSeconds" to body["telemetryIntervalSeconds"]
                )
 
                for((key, element) in fieldMap) {
@@ -457,6 +460,13 @@ class PreviewServer(private val port: Int,
    }
 
    /**
+    * Broadcasts a telemetry reading to all connected /ws/strips clients.
+    */
+   suspend fun broadcastTelemetry(message: StripTelemetryMessage) {
+      stripsBroadcaster.broadcast(message)
+   }
+
+   /**
     * Stops the web server.
     */
    fun stop() {
@@ -548,6 +558,27 @@ class PreviewServer(private val port: Int,
 }
 
 /**
+ * WebSocket message pushed to /ws/strips clients: telemetry reading for a single strip.
+ */
+@Serializable
+data class StripTelemetryMessage(
+   val type: String = "strip_telemetry",
+   val stripId: Int,
+   val status: Int,
+   val temperature: Float,
+   val current: Float,
+   val uptimeMs: Long,
+   val frames: Long,
+   val history: TelemetryHistory
+)
+
+@Serializable
+data class TelemetryHistory(
+   val temperature: List<Float>,
+   val current: List<Float>
+)
+
+/**
  * WebSocket message pushed to /ws/strips clients: current strip list snapshot.
  */
 @Serializable
@@ -626,7 +657,8 @@ data class ScalarSettingsResponse(
    val viewportWidth: Int,
    val viewportHeight: Int,
    val targetFPS: Int,
-   val scanIntervalSeconds: Int
+   val scanIntervalSeconds: Int,
+   val telemetryIntervalSeconds: Int
 )
 
 @Serializable

@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { useStripsWebSocket } from '../hooks/useStripsWebSocket.ts';
+import { Sparkline } from './Sparkline.tsx';
 
 interface StripManagerTabProps {
    active: boolean;
 }
 
+function formatUptime(ms: number): string {
+   const totalSeconds = Math.floor(ms / 1000);
+   const days = Math.floor(totalSeconds / 86400);
+   const hours = Math.floor((totalSeconds % 86400) / 3600);
+   const minutes = Math.floor((totalSeconds % 3600) / 60);
+   const seconds = totalSeconds % 60;
+   return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
 export function StripManagerTab({ active }: StripManagerTabProps) {
-   const { strips, activityLog, isScanning, isReconnecting } =
+   const { strips, activityLog, stripTelemetry, isScanning, isReconnecting } =
       useStripsWebSocket(active);
 
    // Track optimistic connection states per strip id
@@ -45,6 +55,7 @@ export function StripManagerTab({ active }: StripManagerTabProps) {
                      ? overrideStatus === 'connected'
                      : strip.connected;
                   const isConnecting = overrideStatus === 'connecting';
+                  const telemetry = stripTelemetry[strip.id];
 
                   return (
                      <div key={strip.id} className="strip-row">
@@ -78,6 +89,42 @@ export function StripManagerTab({ active }: StripManagerTabProps) {
                               Reconnect
                            </button>
                         )}
+                        <div className="strip-telemetry">
+                           {telemetry ? (
+                              <>
+                                 <div className="strip-telemetry-values">
+                                    <span className="telemetry-item">
+                                       <span className="telemetry-label">Temp</span>
+                                       <span className="telemetry-value">{telemetry.temperature.toFixed(1)} °C</span>
+                                    </span>
+                                    <span className="telemetry-item">
+                                       <span className="telemetry-label">Current</span>
+                                       <span className="telemetry-value">{telemetry.current.toFixed(2)} A</span>
+                                    </span>
+                                    <span className="telemetry-item">
+                                       <span className="telemetry-label">Uptime</span>
+                                       <span className="telemetry-value">{formatUptime(telemetry.uptimeMs)}</span>
+                                    </span>
+                                    <span className="telemetry-item">
+                                       <span className="telemetry-label">Frames</span>
+                                       <span className="telemetry-value">{telemetry.frames.toLocaleString()}</span>
+                                    </span>
+                                 </div>
+                                 <div className="strip-telemetry-charts">
+                                    <div className="sparkline-row">
+                                       <span className="sparkline-label">Temp</span>
+                                       <Sparkline values={telemetry.history.temperature} color="orange" />
+                                    </div>
+                                    <div className="sparkline-row">
+                                       <span className="sparkline-label">Current</span>
+                                       <Sparkline values={telemetry.history.current} color="cyan" />
+                                    </div>
+                                 </div>
+                              </>
+                           ) : (
+                              <span className="telemetry-awaiting">Awaiting telemetry…</span>
+                           )}
+                        </div>
                      </div>
                   );
                })

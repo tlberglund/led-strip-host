@@ -90,7 +90,23 @@ export interface DiscoveryEventWsMessage {
    message: string;
 }
 
-export type StripsWsMessage = StripsUpdateMessage | DiscoveryEventWsMessage;
+export interface TelemetryHistory {
+   temperature: number[];
+   current: number[];
+}
+
+export interface StripTelemetryMessage {
+   type: 'strip_telemetry';
+   stripId: number;
+   status: number;
+   temperature: number;
+   current: number;
+   uptimeMs: number;
+   frames: number;
+   history: TelemetryHistory;
+}
+
+export type StripsWsMessage = StripsUpdateMessage | DiscoveryEventWsMessage | StripTelemetryMessage;
 
 // Activity log entry for the Strips tab
 export interface ActivityLogEntry {
@@ -111,6 +127,7 @@ export interface ScalarSettings {
    viewportHeight: number;
    targetFPS: number;
    scanIntervalSeconds: number;
+   telemetryIntervalSeconds: number;
 }
 
 // Strip setting from GET /api/settings/strips

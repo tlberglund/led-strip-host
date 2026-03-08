@@ -25,7 +25,11 @@
       "Bash(openspec instructions apply --change \"settings-database-ui\" --json)",
       "Bash(./gradlew dependencies --configuration testRuntimeClasspath 2>&1 | grep -A 2 \"coroutines-core\")",
       "WebSearch",
-      "WebFetch(domain:ktor.io)"
+      "WebFetch(domain:ktor.io)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(openspec list:*)"
     ]
   }
 }

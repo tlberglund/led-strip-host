@@ -12,7 +12,7 @@ import java.nio.ByteOrder
 import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.pattern.patterns.PlasmaPattern
-import com.timberglund.ledstrip.BluetoothTester
+import com.timberglund.ledstrip.BluetoothHost
 import com.timberglund.ledhost.pattern.patterns.RainbowPattern
 import com.timberglund.ledhost.pattern.patterns.SolidColorPattern
 import com.timberglund.ledhost.renderer.FrameRenderer
@@ -93,14 +93,16 @@ fun main(args: Array<String>) {
    patternRegistry.register(SolidColorPattern())
    logger.info { "Registered patterns: ${patternRegistry.listPatterns().joinToString(", ")}" }
 
-   // Read scan interval from DB (task 3.4)
-   val scanIntervalSeconds = runBlocking {
-      settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
+   // Read scan and telemetry intervals from DB
+   val (scanIntervalSeconds, telemetryIntervalSeconds) = runBlocking {
+      val scan = settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
+      val telemetry = settingsRepository.getSetting("telemetryIntervalSeconds")?.toIntOrNull() ?: 5
+      Pair(scan, telemetry)
    }
 
-   // Create and start BLE strip manager; seed with known strips from DB (task 3.3)
+   // Create and start BLE strip manager; seed with known strips from DB
    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-   val bleManager = BluetoothTester()
+   val bleManager = BluetoothHost()
    bleManager.seedKnownStrips(dbStrips.map { it.id to it.btName })
    appScope.launch {
       bleManager.scanAndConnect()
@@ -156,6 +158,26 @@ fun main(args: Array<String>) {
       }
 
       previewServer.start()
+
+      // Wire telemetry polling: store readings and broadcast to /ws/strips clients
+      val telemetryStore = TelemetryStore()
+      bleManager.startTelemetryPolling(appScope, telemetryIntervalSeconds * 1000L) { stripId, reading ->
+         telemetryStore.record(stripId, reading)
+         val history = telemetryStore.getHistory(stripId)
+         val msg = com.timberglund.ledhost.web.StripTelemetryMessage(
+            stripId = stripId,
+            status = reading.status,
+            temperature = reading.temperature,
+            current = reading.current,
+            uptimeMs = reading.uptimeMs,
+            frames = reading.frames,
+            history = com.timberglund.ledhost.web.TelemetryHistory(
+               temperature = history.map { it.temperature },
+               current = history.map { it.current }
+            )
+         )
+         appScope.launch { previewServer.broadcastTelemetry(msg) }
+      }
    }
 
    // Set initial pattern

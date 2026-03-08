@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { StripStatus, ActivityLogEntry, StripsWsMessage } from '../types.ts';
+import type { StripStatus, ActivityLogEntry, StripsWsMessage, StripTelemetryMessage } from '../types.ts';
 
 const MAX_LOG_ENTRIES = 50;
 const BACKOFF_INITIAL_MS = 1000;
@@ -8,6 +8,7 @@ const BACKOFF_MAX_MS = 30000;
 export function useStripsWebSocket(active: boolean) {
    const [strips, setStrips] = useState<StripStatus[]>([]);
    const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+   const [stripTelemetry, setStripTelemetry] = useState<Record<number, StripTelemetryMessage>>({});
    const [isConnected, setIsConnected] = useState(false);
    const [isReconnecting, setIsReconnecting] = useState(false);
    const backoffRef = useRef(BACKOFF_INITIAL_MS);
@@ -64,6 +65,9 @@ export function useStripsWebSocket(active: boolean) {
                   };
                   setActivityLog((prev) => [entry, ...prev].slice(0, MAX_LOG_ENTRIES));
                }
+               else if(msg.type === 'strip_telemetry') {
+                  setStripTelemetry((prev) => ({ ...prev, [msg.stripId]: msg }));
+               }
             }
             catch {
                // Ignore malformed messages
@@ -85,5 +89,5 @@ export function useStripsWebSocket(active: boolean) {
    const isScanning = activityLog.length > 0 &&
       activityLog[0].message.startsWith('Scanning');
 
-   return { strips, activityLog, isScanning, isConnected, isReconnecting };
+   return { strips, activityLog, stripTelemetry, isScanning, isConnected, isReconnecting };
 }
