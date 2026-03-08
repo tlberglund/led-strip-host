@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useStripsWebSocket } from '../hooks/useStripsWebSocket.ts';
 import { useSettings } from '../hooks/useSettings.ts';
 import { Sparkline } from './Sparkline.tsx';
+import { LedStrip } from './LedStrip.tsx';
 
 interface StripManagerTabProps {
    active: boolean;
@@ -17,7 +18,7 @@ function formatUptime(ms: number): string {
 }
 
 export function StripManagerTab({ active }: StripManagerTabProps) {
-   const { strips, activityLog, stripTelemetry, isScanning, isReconnecting } =
+   const { strips, activityLog, stripTelemetry, stripLeds, isScanning, isReconnecting } =
       useStripsWebSocket(active);
    const { settings, saveSettings } = useSettings();
 
@@ -125,6 +126,10 @@ export function StripManagerTab({ active }: StripManagerTabProps) {
                            <span>{strip.length} LEDs</span>
                            <span>{strip.address}</span>
                         </div>
+                        <LedStrip
+                           rgbValues={stripLeds[strip.id] ?? []}
+                           ledCount={strip.length}
+                        />
                         {isConnected && !isConnecting && (
                            <button
                               className="strip-action-btn btn-danger"

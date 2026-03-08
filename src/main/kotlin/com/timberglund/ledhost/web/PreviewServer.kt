@@ -460,6 +460,15 @@ class PreviewServer(private val port: Int,
    }
 
    /**
+    * Broadcasts per-LED color data for each strip to all connected /ws/strips clients.
+    */
+   suspend fun broadcastLeds(messages: List<StripLedsMessage>) {
+      for(message in messages) {
+         stripsBroadcaster.broadcast(message)
+      }
+   }
+
+   /**
     * Broadcasts a telemetry reading to all connected /ws/strips clients.
     */
    suspend fun broadcastTelemetry(message: StripTelemetryMessage) {
@@ -556,6 +565,16 @@ class PreviewServer(private val port: Int,
       }
    }
 }
+
+/**
+ * WebSocket message pushed to /ws/strips clients: per-LED color data for a single strip.
+ */
+@Serializable
+data class StripLedsMessage(
+   val type: String = "strip_leds",
+   val stripId: Int,
+   val rgb: String
+)
 
 /**
  * WebSocket message pushed to /ws/strips clients: telemetry reading for a single strip.

@@ -26,6 +26,7 @@ class StripsWsBroadcaster {
    suspend fun broadcast(message: StripsUpdateMessage) = broadcastText(stripsJson.encodeToString(message))
    suspend fun broadcast(message: DiscoveryEventMessage) = broadcastText(stripsJson.encodeToString(message))
    suspend fun broadcast(message: StripTelemetryMessage) = broadcastText(stripsJson.encodeToString(message))
+   suspend fun broadcast(message: StripLedsMessage) = broadcastText(stripsJson.encodeToString(message))
 
    suspend fun sendTo(session: WebSocketSession, message: StripsUpdateMessage) {
       sendTextTo(session, stripsJson.encodeToString(message))

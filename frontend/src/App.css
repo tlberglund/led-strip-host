@@ -548,6 +548,15 @@ button:active {
    font-style: italic;
 }
 
+.strip-led-canvas {
+   display: block;
+   width: 100%;
+   height: auto;
+   overflow: hidden;
+   background: #111;
+   border-radius: 2px;
+}
+
 /* ── Settings tab ───────────────────────────────────────────────────────── */
 
 .settings-tab {

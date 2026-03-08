@@ -124,8 +124,8 @@ fun main(args: Array<String>) {
          // Build strip frames synchronously while viewport is stable, then send
          val frames = buildStripFrames(renderedViewport, mapper, loadedStrips)
          appScope.launch {
-            for((stripId, frame) in frames) {
-               bleManager.sendFrame(stripId, frame)
+            for((stripId, pair) in frames) {
+               bleManager.sendFrame(stripId, pair.first)
             }
          }
 
@@ -135,6 +135,12 @@ fun main(args: Array<String>) {
             lastBroadcastTime = now
             appScope.launch {
                previewServer?.broadcastViewport()
+               previewServer?.broadcastLeds(frames.map { (stripId, pair) ->
+                  com.timberglund.ledhost.web.StripLedsMessage(
+                     stripId = stripId,
+                     rgb = toRgbHex(pair.second)
+                  )
+               })
             }
          }
       }
@@ -213,12 +219,13 @@ fun main(args: Array<String>) {
 
 /**
  * Builds BLE frame bytes for every configured strip from the current viewport.
+ * Also returns the per-LED color arrays for use by the LED display broadcaster.
  * Must be called while the viewport is stable (i.e. synchronously in the render callback).
  */
 private fun buildStripFrames(
    viewport: Viewport,
    mapper: PixelMapper,
-   strips: List<StripLayout>): Map<Int, ByteArray> {
+   strips: List<StripLayout>): Map<Int, Pair<ByteArray, Array<Color>>> {
    val ledColors = mapper.mapViewportToLEDs(viewport)
    return strips.associate { strip ->
       val leds = Array(strip.length) { Color.BLACK }
@@ -227,7 +234,7 @@ private fun buildStripFrames(
             leds[address.ledIndex] = color
          }
       }
-      strip.id to buildStripFrame(leds)
+      strip.id to Pair(buildStripFrame(leds), leds)
    }
 }
 
@@ -249,4 +256,15 @@ private fun buildStripFrame(leds: Array<Color>): ByteArray =
          }
       }
       .array()
+
+/**
+ * Encodes an array of LED colors as a compact lowercase hex string (RRGGBB per LED, no separators).
+ */
+private fun toRgbHex(leds: Array<Color>): String {
+   val sb = StringBuilder(leds.size * 6)
+   for(led in leds) {
+      sb.append(String.format("%02x%02x%02x", led.r, led.g, led.b))
+   }
+   return sb.toString()
+}
 

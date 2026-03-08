@@ -106,7 +106,13 @@ export interface StripTelemetryMessage {
    history: TelemetryHistory;
 }
 
-export type StripsWsMessage = StripsUpdateMessage | DiscoveryEventWsMessage | StripTelemetryMessage;
+export interface StripLedsMessage {
+   type: 'strip_leds';
+   stripId: number;
+   rgb: string;
+}
+
+export type StripsWsMessage = StripsUpdateMessage | DiscoveryEventWsMessage | StripTelemetryMessage | StripLedsMessage;
 
 // Activity log entry for the Strips tab
 export interface ActivityLogEntry {
