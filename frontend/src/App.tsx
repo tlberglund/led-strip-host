@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import './App.css';
 import { useWebSocket } from './hooks/useWebSocket.ts';
 import { usePatterns } from './hooks/usePatterns.ts';
@@ -13,8 +13,29 @@ import type { PatternInfo } from './types.ts';
 
 type Tab = 'pattern' | 'strips' | 'settings';
 
+const TABS: Tab[] = ['pattern', 'strips', 'settings'];
+
+function tabFromPath(path: string): Tab {
+   const segment = path.replace(/^\//, '').split('/')[0] as Tab;
+   return TABS.includes(segment) ? segment : 'pattern';
+}
+
 function App() {
-   const [activeTab, setActiveTab] = useState<Tab>('pattern');
+   const [activeTab, setActiveTab] = useState<Tab>(() => tabFromPath(window.location.pathname));
+
+   useEffect(() => {
+      const onPopState = () => setActiveTab(tabFromPath(window.location.pathname));
+      window.addEventListener('popstate', onPopState);
+      return () => window.removeEventListener('popstate', onPopState);
+   }, []);
+
+   const navigateTo = useCallback((tab: Tab) => {
+      const path = `/${tab}`;
+      if(window.location.pathname !== path) {
+         history.pushState(null, '', path);
+      }
+      setActiveTab(tab);
+   }, []);
 
    // Connection state
    const [connected, setConnected] = useState(false);
@@ -119,17 +140,17 @@ function App() {
             <div className="tabs" role="tablist">
                <button
                   className={`tab ${activeTab === 'pattern' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('pattern')}>
+                  onClick={() => navigateTo('pattern')}>
                   Pattern
                </button>
                <button
                   className={`tab ${activeTab === 'strips' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('strips')}>
+                  onClick={() => navigateTo('strips')}>
                   Strips
                </button>
                <button
                   className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('settings')}>
+                  onClick={() => navigateTo('settings')}>
                   Settings
                </button>
             </div>

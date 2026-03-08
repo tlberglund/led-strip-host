@@ -94,6 +94,18 @@ class PreviewServer(private val port: Int,
                default("index.html")
             }
 
+            // SPA tab routes — serve index.html so the frontend can handle routing
+            for(path in listOf("/pattern", "/strips", "/settings")) {
+               get(path) {
+                  val html = this::class.java.classLoader.getResourceAsStream("web/index.html")
+                     ?.readBytes()
+                  if(html != null)
+                     call.respondBytes(html, io.ktor.http.ContentType.Text.Html)
+                  else
+                     call.respond(io.ktor.http.HttpStatusCode.NotFound)
+               }
+            }
+
             // WebSocket endpoint for real-time viewport updates
             webSocket("/viewport") {
                broadcaster.addClient(this)
