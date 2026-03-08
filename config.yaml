@@ -2,9 +2,9 @@ webServer:
   port: 8080
 
 # Database connection — required. Defaults match docker-compose.yml credentials.
-# databaseUrl: jdbc:postgresql://localhost:5432/ledstrip
-# databaseUser: ledstrip
-# databasePassword: ledstrip
+databaseUrl: jdbc:postgresql://localhost:5432/ledstrip
+databaseUser: ledstrip
+databasePassword: ledstrip
 
 # ── First-run seeding (optional) ─────────────────────────────────────────
 # These fields are read once when the database is empty and inserted as the
