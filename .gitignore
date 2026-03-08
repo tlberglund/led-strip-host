@@ -3,4 +3,6 @@ build/
 .gradle/
 frontend/node_modules/
 .kotlin/
-
+src/main/resources/web/index.html
+src/main/resources/web/assets/index-*.js
+src/main/resources/web/assets/index-*.css

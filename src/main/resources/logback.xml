@@ -9,6 +9,7 @@
    <logger name="io.ktor" level="WARN"/>
    <logger name="io.netty" level="WARN"/>
    <logger name="org.eclipse.jetty" level="WARN"/>
+   <logger name="BluetoothPeripheral" level="WARN"/>
 
    <root level="INFO">
       <appender-ref ref="STDOUT"/>

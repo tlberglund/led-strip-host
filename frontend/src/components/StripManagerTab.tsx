@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStripsWebSocket } from '../hooks/useStripsWebSocket.ts';
+import { useSettings } from '../hooks/useSettings.ts';
 import { Sparkline } from './Sparkline.tsx';
 
 interface StripManagerTabProps {
@@ -18,6 +19,38 @@ function formatUptime(ms: number): string {
 export function StripManagerTab({ active }: StripManagerTabProps) {
    const { strips, activityLog, stripTelemetry, isScanning, isReconnecting } =
       useStripsWebSocket(active);
+   const { settings, saveSettings } = useSettings();
+
+   const [intervalInput, setIntervalInput] = useState('');
+   const [savedFeedback, setSavedFeedback] = useState(false);
+
+   // Sync input from loaded settings
+   useEffect(() => {
+      if(settings.telemetryIntervalSeconds) {
+         setIntervalInput(String(settings.telemetryIntervalSeconds));
+      }
+   }, [settings.telemetryIntervalSeconds]);
+
+   const commitInterval = async () => {
+      const val = parseInt(intervalInput, 10);
+      if(!val || val < 1) {
+         setIntervalInput(String(settings.telemetryIntervalSeconds));
+         return;
+      }
+      if(val === settings.telemetryIntervalSeconds) return;
+      const result = await saveSettings({ telemetryIntervalSeconds: val });
+      if(result.ok) {
+         setSavedFeedback(true);
+         setTimeout(() => setSavedFeedback(false), 2000);
+      }
+      else {
+         setIntervalInput(String(settings.telemetryIntervalSeconds));
+      }
+   };
+
+   const handleIntervalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if(e.key === 'Enter') e.currentTarget.blur();
+   };
 
    // Track optimistic connection states per strip id
    const [optimistic, setOptimistic] = useState<Record<number, string>>({});
@@ -37,12 +70,31 @@ export function StripManagerTab({ active }: StripManagerTabProps) {
    return (
       <div className="strips-tab">
          <div className="strips-tab-header">
-            {isReconnecting && (
-               <span className="strip-reconnecting">Reconnecting…</span>
-            )}
-            {isScanning && (
-               <span className="strip-scanning">Scanning…</span>
-            )}
+            <div className="strips-tab-header-status">
+               {isReconnecting && (
+                  <span className="strip-reconnecting">Reconnecting…</span>
+               )}
+               {isScanning && (
+                  <span className="strip-scanning">Scanning…</span>
+               )}
+            </div>
+            <div className="telemetry-interval-control">
+               <label htmlFor="telemetry-interval">Telemetry interval</label>
+               <input
+                  id="telemetry-interval"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={intervalInput}
+                  onChange={(e) => setIntervalInput(e.target.value)}
+                  onBlur={commitInterval}
+                  onKeyDown={handleIntervalKeyDown}
+                  className="telemetry-interval-input"
+               />
+               <span className="telemetry-interval-unit">
+                  {savedFeedback ? 'saved ✓' : 'sec'}
+               </span>
+            </div>
          </div>
 
          <div className="strip-list">
