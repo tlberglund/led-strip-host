@@ -113,11 +113,21 @@ export function StripManagerTab({ active }: StripManagerTabProps) {
                                  <div className="strip-telemetry-charts">
                                     <div className="sparkline-row">
                                        <span className="sparkline-label">Temp</span>
-                                       <Sparkline values={telemetry.history.temperature} color="orange" />
+                                       <Sparkline
+                                          values={telemetry.history.temperature}
+                                          color="orange"
+                                          minVal={Math.min(50, ...telemetry.history.temperature)}
+                                          maxVal={Math.max(100, ...telemetry.history.temperature)}
+                                       />
                                     </div>
                                     <div className="sparkline-row">
                                        <span className="sparkline-label">Current</span>
-                                       <Sparkline values={telemetry.history.current} color="cyan" />
+                                       <Sparkline
+                                          values={telemetry.history.current}
+                                          color="cyan"
+                                          minVal={0}
+                                          maxVal={3}
+                                       />
                                     </div>
                                  </div>
                               </>
