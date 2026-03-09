@@ -13,6 +13,7 @@ import { SettingsTab } from './components/SettingsTab.tsx';
 import type { PatternInfo } from './types.ts';
 
 type Tab = 'pattern' | 'strips' | 'settings';
+type RightTab = 'controls' | 'saved';
 
 const TABS: Tab[] = ['pattern', 'strips', 'settings'];
 
@@ -23,6 +24,7 @@ function tabFromPath(path: string): Tab {
 
 function App() {
    const [activeTab, setActiveTab] = useState<Tab>(() => tabFromPath(window.location.pathname));
+   const [rightTab, setRightTab] = useState<RightTab>('controls');
 
    useEffect(() => {
       const onPopState = () => setActiveTab(tabFromPath(window.location.pathname));
@@ -201,30 +203,48 @@ function App() {
                   viewportHeight={viewportHeight}
                   onResolutionChange={handleResolutionChange}
                />
-               <ControlsSidebar
-                  connected={connected}
-                  showViewport={showViewport}
-                  showStrips={showStrips}
-                  showBackground={showBackground}
-                  hasBackgroundImage={backgroundImageUrl !== null}
-                  onShowViewportChange={setShowViewport}
-                  onShowStripsChange={setShowStrips}
-                  onShowBackgroundChange={setShowBackground}
-                  patterns={patterns}
-                  selectedPattern={selectedPattern}
-                  onPatternSelect={handlePatternSelect}
-                  parameters={selectedPatternInfo?.parameters ?? []}
-                  paramValues={paramValues}
-                  onParamChange={handleParamChange}
-                  onApplyPattern={handleApplyPattern}
-                  stats={stats}
-                  resolution={resolution}
-               />
-               <SavedPatternsPanel
-                  onLoad={handleLoadPreset}
-                  currentPatternName={selectedPattern}
-                  currentParams={paramValues}
-               />
+               <div id="right-panel">
+                  <div className="right-tabs" role="tablist">
+                     <button
+                        className={`right-tab${rightTab === 'controls' ? ' active' : ''}`}
+                        onClick={() => setRightTab('controls')}>
+                        Settings
+                     </button>
+                     <button
+                        className={`right-tab${rightTab === 'saved' ? ' active' : ''}`}
+                        onClick={() => setRightTab('saved')}>
+                        Saved
+                     </button>
+                  </div>
+                  {rightTab === 'controls' && (
+                     <ControlsSidebar
+                        connected={connected}
+                        showViewport={showViewport}
+                        showStrips={showStrips}
+                        showBackground={showBackground}
+                        hasBackgroundImage={backgroundImageUrl !== null}
+                        onShowViewportChange={setShowViewport}
+                        onShowStripsChange={setShowStrips}
+                        onShowBackgroundChange={setShowBackground}
+                        patterns={patterns}
+                        selectedPattern={selectedPattern}
+                        onPatternSelect={handlePatternSelect}
+                        parameters={selectedPatternInfo?.parameters ?? []}
+                        paramValues={paramValues}
+                        onParamChange={handleParamChange}
+                        onApplyPattern={handleApplyPattern}
+                        stats={stats}
+                        resolution={resolution}
+                     />
+                  )}
+                  {rightTab === 'saved' && (
+                     <SavedPatternsPanel
+                        onLoad={handleLoadPreset}
+                        currentPatternName={selectedPattern}
+                        currentParams={paramValues}
+                     />
+                  )}
+               </div>
             </div>
          )}
 

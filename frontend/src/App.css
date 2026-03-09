@@ -41,11 +41,53 @@ h1 {
    position: relative;
 }
 
+#right-panel {
+   width: 28%;
+   min-width: 260px;
+   max-width: 380px;
+   display: flex;
+   flex-direction: column;
+   gap: 0;
+   align-self: flex-start;
+}
+
+.right-tabs {
+   display: flex;
+   border-bottom: 2px solid #333;
+   margin-bottom: 0;
+}
+
+.right-tab {
+   padding: 7px 16px;
+   margin-bottom: -2px;
+   width: auto;
+   background: transparent;
+   border: none;
+   border-bottom: 2px solid transparent;
+   color: #888;
+   cursor: pointer;
+   border-radius: 0;
+   font-size: 13px;
+   font-weight: 500;
+   margin-top: 0;
+}
+
+.right-tab:hover {
+   color: #ccc;
+   background: transparent;
+}
+
+.right-tab.active {
+   color: #fff;
+   border-bottom-color: #4a9eff;
+   background: transparent;
+}
+
 #controls {
-   width: 320px;
+   width: 100%;
    background: #2a2a2a;
    padding: 20px;
-   border-radius: 8px;
+   border-radius: 0 0 8px 8px;
 }
 
 canvas {
@@ -326,8 +368,9 @@ button:active {
       flex-direction: column;
    }
 
-   #controls {
+   #right-panel {
       width: 100%;
+      max-width: none;
    }
 
    #preview {
@@ -989,11 +1032,10 @@ button:active {
 /* ── Saved patterns panel ───────────────────────────────────────────────── */
 
 .saved-patterns-panel {
-   width: 320px;
+   width: 100%;
    background: #2a2a2a;
    padding: 20px;
-   border-radius: 8px;
-   align-self: flex-start;
+   border-radius: 0 0 8px 8px;
 }
 
 .saved-patterns-heading {
