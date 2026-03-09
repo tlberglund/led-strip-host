@@ -60,7 +60,7 @@ data class StripRow(
 // ──────────────────────────────────────────────
 
 class SettingsRepository {
-   private lateinit var database: Database
+   internal lateinit var database: Database
    private var cacheFilePath: String = ""
 
    // ── Connection & schema creation ──────────────────────────────────────
@@ -99,6 +99,12 @@ class SettingsRepository {
          }
       }
    }
+
+   // ── Active preset ─────────────────────────────────────────────────────
+
+   suspend fun setActivePresetName(name: String) = setSetting("activePresetName", name)
+
+   suspend fun getActivePresetName(): String? = getSetting("activePresetName")
 
    // ── Strips CRUD ───────────────────────────────────────────────────────
 

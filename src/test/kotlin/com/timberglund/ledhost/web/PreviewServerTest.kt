@@ -1,6 +1,7 @@
 package com.timberglund.ledhost.web
 
 import com.timberglund.ledhost.config.*
+import com.timberglund.ledhost.db.SavedPatternsRepository
 import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.db.StripRow
 import com.timberglund.ledhost.mapper.LinearMapper
@@ -26,6 +27,7 @@ class PreviewServerTest {
     private lateinit var viewport: ArrayViewport
     private lateinit var registry: DefaultPatternRegistry
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var savedPatternsRepository: SavedPatternsRepository
 
     @BeforeTest
     fun setup() {
@@ -45,6 +47,9 @@ class PreviewServerTest {
         )
         every { settingsRepository.getCacheFilePath() } returns null
 
+        savedPatternsRepository = mockk(relaxed = true)
+        coEvery { savedPatternsRepository.getAllPresets() } returns emptyList()
+
         val mapper = LinearMapper(listOf(
             StripLayout(0, 50, StripPosition(PointConfig(0, 0), PointConfig(9, 4)))
         ))
@@ -55,6 +60,7 @@ class PreviewServerTest {
             patternRegistry = registry,
             renderer = null,
             settingsRepository = settingsRepository,
+            savedPatternsRepository = savedPatternsRepository,
             mapper = mapper
         )
     }

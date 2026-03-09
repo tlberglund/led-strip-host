@@ -7,6 +7,7 @@ import { useLEDStrips } from './hooks/useLEDStrips.ts';
 import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
+import { SavedPatternsPanel } from './components/SavedPatternsPanel.tsx';
 import { StripManagerTab } from './components/StripManagerTab.tsx';
 import { SettingsTab } from './components/SettingsTab.tsx';
 import type { PatternInfo } from './types.ts';
@@ -62,6 +63,25 @@ function App() {
    const stats = useStats(connected);
    const ledStripsRef = useLEDStrips(showStrips);
    const backgroundImageUrl = useBackgroundImage();
+
+   // Restore active pattern from backend on mount (task 6.1)
+   useEffect(() => {
+      async function restoreActivePattern() {
+         try {
+            const response = await fetch('/api/active-pattern');
+            if(!response.ok) return;
+            const data: { patternName: string; params: Record<string, unknown> } = await response.json();
+            if(data.patternName) {
+               setSelectedPattern(data.patternName);
+               setParamValues(data.params as Record<string, number | string>);
+            }
+         }
+         catch(e) {
+            // Non-fatal: backend may not have an active pattern yet
+         }
+      }
+      restoreActivePattern();
+   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
    // Look up the currently selected pattern's info
    const selectedPatternInfo: PatternInfo | undefined = useMemo(() => {
@@ -133,6 +153,18 @@ function App() {
       }
    }, [selectedPattern, paramValues]);
 
+   // Load a saved preset: override pattern + params then apply immediately
+   const handleLoadPreset = useCallback((patternName: string, params: Record<string, unknown>) => {
+      const typedParams = params as Record<string, number | string>;
+      setSelectedPattern(patternName);
+      setParamValues(typedParams);
+      fetch(`/api/pattern/${patternName}`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(typedParams),
+      }).catch((e) => console.error('Failed to apply preset:', e));
+   }, []);
+
    return (
       <>
          <div id="top-nav">
@@ -187,6 +219,11 @@ function App() {
                   onApplyPattern={handleApplyPattern}
                   stats={stats}
                   resolution={resolution}
+               />
+               <SavedPatternsPanel
+                  onLoad={handleLoadPreset}
+                  currentPatternName={selectedPattern}
+                  currentParams={paramValues}
                />
             </div>
          )}

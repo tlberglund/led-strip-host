@@ -1,5 +1,7 @@
 package com.timberglund.ledhost.web
 
+import com.timberglund.ledhost.db.SavedPatternRow
+import com.timberglund.ledhost.db.SavedPatternsRepository
 import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.mapper.PixelMapper
 import com.timberglund.ledstrip.BluetoothHost
@@ -31,6 +33,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -53,12 +56,15 @@ class PreviewServer(private val port: Int,
                     private val patternRegistry: PatternRegistry,
                     private val renderer: FrameRenderer?,
                     private val settingsRepository: SettingsRepository,
+                    private val savedPatternsRepository: SavedPatternsRepository,
                     private val mapper: PixelMapper,
                     private val bleManager: BluetoothHost? = null) {
    private val broadcaster = WebSocketBroadcaster()
    private val stripsBroadcaster = StripsWsBroadcaster()
    private var server: EmbeddedServer<*, *>? = null
    private var currentPattern: Pattern? = null
+   private var currentPatternName: String = ""
+   private var currentParamValues: Map<String, Any> = emptyMap()
    private var patternChangeListener: ((String, PatternParameters) -> Unit)? = null
 
    /**
@@ -66,6 +72,26 @@ class PreviewServer(private val port: Int,
     */
    fun setPatternChangeListener(listener: (String, PatternParameters) -> Unit) {
       patternChangeListener = listener
+   }
+
+   /**
+    * Seeds the in-memory active-pattern state from startup restore (before server starts).
+    * Does NOT call the change listener or update the renderer — Application.kt handles that.
+    */
+   fun setCurrentPattern(name: String, params: Map<String, Any>) {
+      currentPatternName = name
+      currentParamValues = params
+      currentPattern = patternRegistry.get(name)
+   }
+
+   /**
+    * Loads a saved preset: applies it to the viewport and persists activePresetName.
+    * This is the ONLY code path that updates activePresetName in settings.
+    */
+   private suspend fun loadPreset(preset: SavedPatternRow) {
+      val params = preset.params.jsonObjectToMap()
+      setPattern(preset.patternName, params)
+      settingsRepository.setActivePresetName(preset.presetName)
    }
 
    /**
@@ -266,6 +292,101 @@ class PreviewServer(private val port: Int,
                } else {
                   call.respond(HttpStatusCode.NotFound, "No background image stored")
                }
+            }
+
+            // ── Active pattern ────────────────────────────────────────────────
+
+            get("/api/active-pattern") {
+               call.respond(ActivePatternResponse(
+                  patternName = currentPatternName,
+                  params = currentParamValues.mapToJsonObject()
+               ))
+            }
+
+            // ── Saved patterns API ────────────────────────────────────────────
+
+            get("/api/saved-patterns") {
+               val presets = savedPatternsRepository.getAllPresets()
+               call.respond(presets.map { it.toResponse() })
+            }
+
+            post("/api/saved-patterns") {
+               val req = try { call.receive<CreatePresetRequest>() }
+               catch(e: Exception) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid request body")
+                  return@post
+               }
+               if(req.presetName.isBlank()) {
+                  call.respond(HttpStatusCode.BadRequest, "presetName is required")
+                  return@post
+               }
+               if(req.patternName.isBlank()) {
+                  call.respond(HttpStatusCode.BadRequest, "patternName is required")
+                  return@post
+               }
+               try {
+                  val row = savedPatternsRepository.createPreset(req.presetName, req.patternName, req.params)
+                  call.respond(HttpStatusCode.Created, row.toResponse())
+               }
+               catch(e: IllegalArgumentException) {
+                  call.respond(HttpStatusCode.Conflict, mapOf("error" to e.message))
+               }
+            }
+
+            put("/api/saved-patterns/{id}") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid preset ID")
+                  return@put
+               }
+               val req = try { call.receive<UpdatePresetRequest>() }
+               catch(e: Exception) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid request body")
+                  return@put
+               }
+               try {
+                  val row = savedPatternsRepository.updatePreset(
+                     presetId = id,
+                     presetName = req.presetName,
+                     patternName = req.patternName,
+                     params = req.params
+                  )
+                  if(row == null)
+                     call.respond(HttpStatusCode.NotFound, "Preset $id not found")
+                  else
+                     call.respond(row.toResponse())
+               }
+               catch(e: IllegalArgumentException) {
+                  call.respond(HttpStatusCode.Conflict, mapOf("error" to e.message))
+               }
+            }
+
+            delete("/api/saved-patterns/{id}") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid preset ID")
+                  return@delete
+               }
+               val deleted = savedPatternsRepository.deletePreset(id)
+               if(deleted)
+                  call.respond(HttpStatusCode.NoContent)
+               else
+                  call.respond(HttpStatusCode.NotFound, "Preset $id not found")
+            }
+
+            post("/api/saved-patterns/{id}/load") {
+               val id = call.parameters["id"]?.toIntOrNull()
+               if(id == null) {
+                  call.respond(HttpStatusCode.BadRequest, "Invalid preset ID")
+                  return@post
+               }
+               val preset = savedPatternsRepository.getAllPresets().firstOrNull { it.id == id }
+               if(preset == null) {
+                  call.respond(HttpStatusCode.NotFound, "Preset $id not found")
+                  return@post
+               }
+               loadPreset(preset)
+               call.respond(preset.toResponse())
             }
 
             // ── Settings API ──────────────────────────────────────────────────
@@ -549,12 +670,14 @@ class PreviewServer(private val port: Int,
    }
 
    /**
-    * Sets the active pattern with parameters.
+    * Sets the active pattern with parameters (live apply — does NOT update activePresetName).
     */
    private fun setPattern(name: String, params: Map<String, Any>) {
       val pattern = patternRegistry.get(name)
       if(pattern != null) {
          currentPattern = pattern
+         currentPatternName = name
+         currentParamValues = params
 
          val patternParams = PatternParameters()
          params.forEach { (key, value) ->
@@ -725,6 +848,75 @@ data class UpdateStripRequest(
    val endY: Int? = null,
    val reverse: Boolean? = null
 )
+
+// ── Saved Patterns API data classes ───────────────────────────────────────────
+
+@Serializable
+data class ActivePatternResponse(
+   val patternName: String,
+   val params: kotlinx.serialization.json.JsonObject
+)
+
+@Serializable
+data class SavedPatternResponse(
+   val id: Int,
+   val presetName: String,
+   val patternName: String,
+   val params: kotlinx.serialization.json.JsonObject,
+   val updatedAt: Long
+)
+
+@Serializable
+data class CreatePresetRequest(
+   val presetName: String = "",
+   val patternName: String = "",
+   val params: kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.buildJsonObject {}
+)
+
+@Serializable
+data class UpdatePresetRequest(
+   val presetName: String? = null,
+   val patternName: String? = null,
+   val params: kotlinx.serialization.json.JsonObject? = null
+)
+
+private fun SavedPatternRow.toResponse() = SavedPatternResponse(
+   id = id,
+   presetName = presetName,
+   patternName = patternName,
+   params = params,
+   updatedAt = updatedAt
+)
+
+private fun Map<String, Any>.mapToJsonObject(): kotlinx.serialization.json.JsonObject =
+   kotlinx.serialization.json.buildJsonObject {
+      forEach { (k, v) ->
+         when(v) {
+            is String -> put(k, v)
+            is Boolean -> put(k, v)
+            is Int -> put(k, v)
+            is Float -> put(k, v.toDouble())
+            is Double -> put(k, v)
+            else -> put(k, v.toString())
+         }
+      }
+   }
+
+private fun kotlinx.serialization.json.JsonObject.jsonObjectToMap(): Map<String, Any> {
+   val result = mutableMapOf<String, Any>()
+   forEach { (k, v) ->
+      if(v is kotlinx.serialization.json.JsonPrimitive) {
+         result[k] = when {
+            v.isString -> v.content
+            v.content == "true" -> true
+            v.content == "false" -> false
+            else -> v.doubleOrNull ?: v.content
+         }
+      }
+   }
+   return result
+}
+
 
 private fun com.timberglund.ledhost.db.StripRow.toResponse() = StripSettingResponse(
    id = id,

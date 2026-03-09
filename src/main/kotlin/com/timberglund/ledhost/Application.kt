@@ -2,6 +2,7 @@ package com.timberglund.ledhost
 
 import com.timberglund.ledhost.config.Configuration
 import com.timberglund.ledhost.config.StripLayout
+import com.timberglund.ledhost.db.SavedPatternsRepository
 import com.timberglund.ledhost.db.SettingsRepository
 import com.timberglund.ledhost.mapper.LinearMapper
 import com.timberglund.ledhost.mapper.PixelMapper
@@ -53,6 +54,10 @@ fun main(args: Array<String>) {
       System.exit(1)
    }
    settingsRepository.seedFromConfig(config)
+
+   // Create saved patterns repository and ensure table exists
+   val savedPatternsRepository = SavedPatternsRepository(settingsRepository.database)
+   savedPatternsRepository.createTable()
 
    // Load runtime settings from database (blocking reads at startup)
    val (viewportWidth, viewportHeight, targetFPS) = runBlocking {
@@ -146,14 +151,57 @@ fun main(args: Array<String>) {
       }
    )
 
+   // Restore active preset from database, or fall back to first registered pattern
+   data class StartupPattern(val name: String, val rawParams: Map<String, Any>)
+   val restoredPreset: StartupPattern? = runBlocking {
+      val presetName = settingsRepository.getActivePresetName()
+      if(presetName != null) {
+         val preset = savedPatternsRepository.getAllPresets().firstOrNull { it.presetName == presetName }
+         if(preset != null) {
+            val rawParams = mutableMapOf<String, Any>()
+            preset.params.forEach { (key, element) ->
+               if(element is kotlinx.serialization.json.JsonPrimitive) {
+                  val content = element.content
+                  rawParams[key] = when {
+                     element.isString -> content
+                     content == "true" -> true
+                     content == "false" -> false
+                     else -> content.toDoubleOrNull() ?: content
+                  }
+               }
+            }
+            logger.info { "Restoring active preset '$presetName' (${preset.patternName})" }
+            StartupPattern(preset.patternName, rawParams)
+         }
+         else {
+            logger.warn { "Active preset '$presetName' not found in database, using default" }
+            null
+         }
+      }
+      else null
+   }
+
+   val startupPattern = restoredPreset
+      ?: run {
+         val firstName = patternRegistry.listPatterns().firstOrNull() ?: "Rainbow"
+         logger.info { "No active preset — starting with $firstName" }
+         StartupPattern(firstName, emptyMap())
+      }
+
    if(config.webServer.enabled) {
       previewServer = PreviewServer(port = config.webServer.port,
                                     viewport = viewport,
                                     patternRegistry = patternRegistry,
                                     renderer = renderer,
                                     settingsRepository = settingsRepository,
+                                    savedPatternsRepository = savedPatternsRepository,
                                     mapper = mapper,
                                     bleManager = bleManager)
+
+      // Seed in-memory active-pattern state from startup restore
+      if(restoredPreset != null) {
+         previewServer.setCurrentPattern(startupPattern.name, startupPattern.rawParams)
+      }
 
       // Handle pattern changes from web interface
       previewServer.setPatternChangeListener { patternName, params ->
@@ -186,11 +234,19 @@ fun main(args: Array<String>) {
       }
    }
 
-   // Set initial pattern
-   val initialPattern = patternRegistry.get("Rainbow")
-   if(initialPattern != null) {
-      logger.info { "Starting with Rainbow pattern" }
-      renderer.setPattern(initialPattern, PatternParameters())
+   val initialPatternObj = patternRegistry.get(startupPattern.name)
+   if(initialPatternObj != null) {
+      val patternParams = PatternParameters()
+      startupPattern.rawParams.forEach { (key, value) ->
+         when(value) {
+            is String -> patternParams.set(key, value)
+            is Boolean -> patternParams.set(key, value)
+            is Double -> patternParams.set(key, value.toFloat())
+            is Float -> patternParams.set(key, value)
+            is Int -> patternParams.set(key, value)
+         }
+      }
+      renderer.setPattern(initialPatternObj, patternParams)
    }
 
    // Start rendering

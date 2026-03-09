@@ -985,3 +985,138 @@ button:active {
    color: #aaa;
    margin: 0 0 12px 0;
 }
+
+/* ── Saved patterns panel ───────────────────────────────────────────────── */
+
+.saved-patterns-panel {
+   width: 320px;
+   background: #2a2a2a;
+   padding: 20px;
+   border-radius: 8px;
+   align-self: flex-start;
+}
+
+.saved-patterns-heading {
+   font-size: 12px;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   color: #aaa;
+   margin: 0 0 12px 0;
+   padding-bottom: 10px;
+   border-bottom: 1px solid #3a3a3a;
+}
+
+.saved-patterns-empty {
+   color: #555;
+   font-size: 13px;
+   margin: 0 0 12px 0;
+}
+
+.saved-preset-list {
+   list-style: none;
+   padding: 0;
+   margin: 0 0 12px 0;
+   display: flex;
+   flex-direction: column;
+   gap: 6px;
+}
+
+.saved-preset-row {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 8px;
+   background: #1a1a1a;
+   border-radius: 5px;
+   padding: 8px 10px;
+   border: 1px solid transparent;
+}
+
+.preset-active {
+   border-color: #4a9eff44;
+   background: #1a2a3a;
+}
+
+.saved-preset-info {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   min-width: 0;
+   flex: 1;
+}
+
+.saved-preset-name {
+   font-size: 13px;
+   color: #ddd;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.saved-preset-badge {
+   font-size: 10px;
+   color: #888;
+   background: #2a2a2a;
+   border-radius: 3px;
+   padding: 2px 6px;
+   white-space: nowrap;
+   flex-shrink: 0;
+}
+
+.saved-preset-actions {
+   display: flex;
+   align-items: center;
+   gap: 4px;
+   flex-shrink: 0;
+}
+
+.saved-preset-confirm-label {
+   font-size: 11px;
+   color: #ff7070;
+   margin-right: 2px;
+}
+
+.preset-name-input {
+   width: 100%;
+   padding: 3px 6px;
+   font-size: 13px;
+   background: #2a2a2a;
+   border: 1px solid #4a9eff;
+   border-radius: 3px;
+   color: #fff;
+}
+
+.save-as-row {
+   display: flex;
+   align-items: flex-start;
+   gap: 6px;
+   margin-top: 4px;
+}
+
+.save-as-input-wrap {
+   flex: 1;
+   display: flex;
+   flex-direction: column;
+   gap: 3px;
+}
+
+.save-as-input {
+   width: 100%;
+   padding: 7px 9px;
+   font-size: 13px;
+   background: #1a1a1a;
+   border: 1px solid #444;
+   border-radius: 4px;
+   color: #fff;
+}
+
+.save-as-input:focus {
+   outline: none;
+   border-color: #4a9eff;
+}
+
+.save-as-error {
+   font-size: 11px;
+   color: #ff9090;
+}
