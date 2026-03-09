@@ -16,14 +16,14 @@ The system SHALL run a background coroutine that periodically scans for BLE devi
 - **THEN** a `discovery_event` is emitted indicating the scan completed with zero results
 
 ### Requirement: Background scan interval is configurable
-The system SHALL read the background scan interval (in seconds) from `config.yaml` under the key `scanIntervalSeconds`, defaulting to 15 if absent.
+The system SHALL read the background scan interval (in seconds) from the settings database under the key `scanIntervalSeconds`, defaulting to 15 if absent. The `scanIntervalSeconds` field in `config.yaml` is no longer consulted after the initial database seed.
 
-#### Scenario: Custom interval respected
-- **WHEN** `scanIntervalSeconds: 60` is set in `config.yaml`
+#### Scenario: Custom interval set in database
+- **WHEN** the `scanIntervalSeconds` setting in the database is 60
 - **THEN** the background scanner waits 60 seconds between scan iterations
 
-#### Scenario: Default interval used when key is absent
-- **WHEN** `scanIntervalSeconds` is not present in `config.yaml`
+#### Scenario: Default interval used when setting absent
+- **WHEN** no `scanIntervalSeconds` row exists in the settings database
 - **THEN** the background scanner uses a 15-second interval
 
 ### Requirement: Discovery events are published via SharedFlow
@@ -43,6 +43,21 @@ The system SHALL use a scan timeout of 5000 ms for background scan iterations (d
 #### Scenario: Background scan timeout expires
 - **WHEN** a background scan iteration runs and 5000 ms elapse without finding all devices
 - **THEN** the scan returns whatever devices were found and the coroutine continues to the next wait interval
+
+### Requirement: Strip registry seeds from database on startup
+The system SHALL load the list of configured strips from the settings database (`strips` table) at startup, making them available to the BLE scanner and frame renderer immediately without waiting for a BLE scan.
+
+#### Scenario: Strips present in database at startup
+- **WHEN** the application starts and the `strips` table has rows
+- **THEN** the strip registry is pre-populated with those strips and `getStripInfos()` returns them (with `connected: false`) before any BLE scan completes
+
+#### Scenario: New strip added via Settings UI
+- **WHEN** a user creates a new strip via `POST /api/settings/strips`
+- **THEN** the strip is available in the registry for the next background scan cycle to attempt a BLE connection
+
+#### Scenario: Strip deleted via Settings UI
+- **WHEN** a user deletes a strip via `DELETE /api/settings/strips/{id}`
+- **THEN** the strip is removed from the registry; if a BLE client is connected to it, it is disconnected first
 
 ### Requirement: Strip list snapshot is pushed on client connect
 The system SHALL send a `strips_update` message containing the full current strip list to any WebSocket client immediately upon connection to `/ws/strips`.
