@@ -72,6 +72,40 @@ function clamp(n: number, lo: number, hi: number): number {
    return Math.max(lo, Math.min(hi, Math.round(n)));
 }
 
+interface SliderRowProps {
+   label: string;
+   min: number;
+   max: number;
+   value: number;
+   gradient: string;
+   onChange: (v: number) => void;
+}
+
+function SliderRow({ label, min, max, value, gradient, onChange }: SliderRowProps) {
+   return (
+      <div className="color-picker-slider-row">
+         <span className="color-picker-slider-label">{label}</span>
+         <input
+            type="range"
+            min={min}
+            max={max}
+            value={value}
+            className="color-picker-channel-slider"
+            style={{ background: gradient }}
+            onChange={e => onChange(+e.target.value)}
+         />
+         <input
+            type="number"
+            min={min}
+            max={max}
+            value={value}
+            className="color-picker-channel-input"
+            onChange={e => onChange(clamp(+e.target.value, min, max))}
+         />
+      </div>
+   );
+}
+
 export function ColorPicker({ value, onChange }: ColorPickerProps) {
    const [open, setOpen] = useState(false);
    const [mode, setMode] = useState<'rgb' | 'hsv'>('rgb');
@@ -79,6 +113,10 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
    const { r, g, b, brightness } = parseValue(value);
    const hsv = rgbToHsv(r, g, b);
    const hex = `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`;
+
+   // Pure hue color for HSV slider gradients
+   const pureHue = hsvToRgb(hsv.h, 100, 100);
+   const pureHueHex = `#${toHex2(pureHue.r)}${toHex2(pureHue.g)}${toHex2(pureHue.b)}`;
 
    const emit = (nr: number, ng: number, nb: number, nbri: number) =>
       onChange(buildValue(clamp(nr, 0, 255), clamp(ng, 0, 255), clamp(nb, 0, 255), clamp(nbri, 0, 31)));
@@ -99,18 +137,8 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
             <div className="color-picker-backdrop" onClick={() => setOpen(false)} />
             <div className="color-picker-popover">
 
-               {/* Hue strip + preview */}
-               <div className="color-picker-hue-row">
-                  <div className="color-picker-preview" style={{ background: hex }} />
-                  <input
-                     type="range"
-                     min={0}
-                     max={360}
-                     value={hsv.h}
-                     className="color-picker-hue-slider"
-                     onChange={e => emitHsv(+e.target.value, hsv.s, hsv.v)}
-                  />
-               </div>
+               {/* Color preview */}
+               <div className="color-picker-preview-block" style={{ background: hex }} />
 
                {/* Mode toggle */}
                <div className="color-picker-mode-toggle">
@@ -124,58 +152,36 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
                   >HSV</button>
                </div>
 
-               {/* Mode-specific numeric inputs */}
-               {mode === 'rgb' ? (
-                  <div className="color-picker-fields">
-                     <div>
-                        <label>R</label>
-                        <input type="number" min={0} max={255} value={r}
-                           onChange={e => emit(+e.target.value, g, b, brightness)} />
-                     </div>
-                     <div>
-                        <label>G</label>
-                        <input type="number" min={0} max={255} value={g}
-                           onChange={e => emit(r, +e.target.value, b, brightness)} />
-                     </div>
-                     <div>
-                        <label>B</label>
-                        <input type="number" min={0} max={255} value={b}
-                           onChange={e => emit(r, g, +e.target.value, brightness)} />
-                     </div>
-                  </div>
-               ) : (
-                  <div className="color-picker-fields">
-                     <div>
-                        <label>H</label>
-                        <input type="number" min={0} max={360} value={hsv.h}
-                           onChange={e => emitHsv(+e.target.value, hsv.s, hsv.v)} />
-                     </div>
-                     <div>
-                        <label>S</label>
-                        <input type="number" min={0} max={100} value={hsv.s}
-                           onChange={e => emitHsv(hsv.h, +e.target.value, hsv.v)} />
-                     </div>
-                     <div>
-                        <label>V</label>
-                        <input type="number" min={0} max={100} value={hsv.v}
-                           onChange={e => emitHsv(hsv.h, hsv.s, +e.target.value)} />
-                     </div>
-                  </div>
-               )}
+               {/* Channel sliders */}
+               {mode === 'rgb' ? (<>
+                  <SliderRow label="R" min={0} max={255} value={r}
+                     gradient={`linear-gradient(to right, rgb(0,${g},${b}), rgb(255,${g},${b}))`}
+                     onChange={v => emit(v, g, b, brightness)} />
+                  <SliderRow label="G" min={0} max={255} value={g}
+                     gradient={`linear-gradient(to right, rgb(${r},0,${b}), rgb(${r},255,${b}))`}
+                     onChange={v => emit(r, v, b, brightness)} />
+                  <SliderRow label="B" min={0} max={255} value={b}
+                     gradient={`linear-gradient(to right, rgb(${r},${g},0), rgb(${r},${g},255))`}
+                     onChange={v => emit(r, g, v, brightness)} />
+               </>) : (<>
+                  <SliderRow label="H" min={0} max={360} value={hsv.h}
+                     gradient="linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)"
+                     onChange={v => emitHsv(v, hsv.s, hsv.v)} />
+                  <SliderRow label="S" min={0} max={100} value={hsv.s}
+                     gradient={`linear-gradient(to right, #fff, ${pureHueHex})`}
+                     onChange={v => emitHsv(hsv.h, v, hsv.v)} />
+                  <SliderRow label="V" min={0} max={100} value={hsv.v}
+                     gradient={`linear-gradient(to right, #000, ${pureHueHex})`}
+                     onChange={v => emitHsv(hsv.h, hsv.s, v)} />
+               </>)}
 
-               {/* Brightness slider */}
-               <div className="color-picker-brightness">
-                  <div className="color-picker-brightness-header">
-                     <label>Brightness</label>
-                     <span>{Math.round(brightness / 31 * 100)}%</span>
-                  </div>
-                  <input
-                     type="range"
-                     min={0}
-                     max={31}
-                     value={brightness}
-                     onChange={e => emit(r, g, b, +e.target.value)}
-                  />
+               {/* Brightness — always visible, independent of mode */}
+               <div className="color-picker-brightness-divider" />
+               <SliderRow label="Bri" min={0} max={31} value={brightness}
+                  gradient={`linear-gradient(to right, #000, ${hex})`}
+                  onChange={v => emit(r, g, b, v)} />
+               <div className="color-picker-brightness-pct">
+                  {Math.round(brightness / 31 * 100)}%
                </div>
 
                {/* Hex display */}
