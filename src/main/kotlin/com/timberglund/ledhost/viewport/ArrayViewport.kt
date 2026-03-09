@@ -19,12 +19,22 @@ class ArrayViewport(
       require(height > 0) { "Height must be positive, got $height" }
    }
 
-   // Pixel buffer stored as [y][x] = color integer
-   private val buffer: Array<IntArray> = Array(height) { IntArray(width) }
+   // Pixel buffer stored as [y][x] = 0xBBRRGGBB where BB = APA102 brightness (0-31) in bits 24-28.
+   // Initialized to packed Color.BLACK (brightness=31, RGB=0,0,0) = 0x1F000000.
+   private val packedBlack = Color.BLACK.pack()
+   private val buffer: Array<IntArray> = Array(height) { IntArray(width) { packedBlack } }
+
+   private fun Color.pack(): Int = (brightness shl 24) or toInt()
+   private fun Int.unpackColor(): Color = Color(
+      r = (this shr 16) and 0xFF,
+      g = (this shr 8) and 0xFF,
+      b = this and 0xFF,
+      brightness = (this ushr 24) and 0x1F
+   )
 
    override fun setPixel(x: Int, y: Int, color: Color) {
       if(x in 0 until width && y in 0 until height) {
-         buffer[y][x] = color.toInt()
+         buffer[y][x] = color.pack()
       }
    }
 
@@ -32,19 +42,14 @@ class ArrayViewport(
       if(x !in 0 until width || y !in 0 until height) {
          return Color.BLACK
       }
-      val colorInt = buffer[y][x]
-      return Color(
-         r = (colorInt shr 16) and 0xFF,
-         g = (colorInt shr 8) and 0xFF,
-         b = colorInt and 0xFF
-      )
+      return buffer[y][x].unpackColor()
    }
 
    override fun fill(color: Color) {
-      val colorInt = color.toInt()
+      val packed = color.pack()
       for(y in 0 until height) {
          for(x in 0 until width) {
-            buffer[y][x] = colorInt
+            buffer[y][x] = packed
          }
       }
    }

@@ -246,7 +246,7 @@ class ViewportTest {
 
       // But should have the same content
       assertEquals(buffer1[3][2], buffer2[3][2])
-      assertEquals(Color.RED.toInt(), buffer1[3][2])
+      assertEquals((Color.RED.brightness shl 24) or Color.RED.toInt(), buffer1[3][2])
    }
 
    @Test
@@ -272,7 +272,8 @@ class ViewportTest {
       // Buffer should be [y][x]
       assertEquals(5, buffer.size) // height
       assertEquals(5, buffer[0].size) // width
-      assertEquals(color.toInt(), buffer[3][2])
+      // Buffer stores packed 0xBBRRGGBB; brightness=31 is the default
+      assertEquals((color.brightness shl 24) or color.toInt(), buffer[3][2])
    }
 
    @Test
