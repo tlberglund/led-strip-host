@@ -5,27 +5,19 @@ import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Color
 import com.timberglund.ledhost.viewport.Viewport
-import kotlin.math.roundToInt
 
 class SolidColorPattern : Pattern {
    override val name = "Solid Color"
-   override val description = "A solid color fill using HSV color model"
+   override val description = "A solid color fill"
 
    override val parameters = listOf(
-      ParameterDef.FloatParam("hue", "Hue", 0f, 360f, 1f, 0f),
-      ParameterDef.FloatParam("saturation", "Saturation", 0f, 1f, 0.01f, 1f),
-      ParameterDef.FloatParam("value", "Value", 0f, 1f, 0.01f, 1f),
-      ParameterDef.IntParam("brightness", "Brightness", 0, 31, 1, 31),
+      ParameterDef.ColorParam("color", "Color", "#ff00001f"),
    )
 
-   private var color = Color.WHITE
+   private var color = Color.RED
 
    override fun initialize(viewport: Viewport, params: PatternParameters) {
-      val hue = params.get("hue", 0f).coerceIn(0f, 360f)
-      val saturation = params.get("saturation", 1f).coerceIn(0f, 1f)
-      val value = params.get("value", 1f).coerceIn(0f, 1f)
-      val brightness = params.get("brightness", 31f).roundToInt().coerceIn(0, 31)
-      color = Color.fromHSV(hue, saturation, value, brightness)
+      color = params.getColor("color", Color.RED)
    }
 
    override fun update(deltaTime: Float, totalTime: Float) {

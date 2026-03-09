@@ -1,5 +1,6 @@
 package com.timberglund.ledhost.pattern
 
+import com.timberglund.ledhost.viewport.Color
 import com.timberglund.ledhost.viewport.Viewport
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -150,6 +151,32 @@ data class PatternParameters(
     * Returns all parameter keys.
     */
    fun keys(): Set<String> = params.keys
+
+   /**
+    * Parses a color parameter stored as a #RRGGBBbb hex string.
+    * The bb suffix is the APA102 brightness field (0–31); if absent, defaults to 31.
+    *
+    * @param key Parameter name
+    * @param default Default value if parameter is missing or unparseable
+    * @return The parsed Color, or default on any error
+    */
+   fun getColor(key: String, default: Color): Color {
+      return try {
+         val hex = params[key] as? String ?: return default
+         if(hex.length < 7 || hex[0] != '#') return default
+         val r = Integer.parseInt(hex.substring(1, 3), 16)
+         val g = Integer.parseInt(hex.substring(3, 5), 16)
+         val b = Integer.parseInt(hex.substring(5, 7), 16)
+         val brightness = if(hex.length >= 9)
+            Integer.parseInt(hex.substring(7, 9), 16).coerceIn(0, 31)
+         else
+            31
+         Color(r, g, b, brightness)
+      }
+      catch(e: Exception) {
+         default
+      }
+   }
 
    /**
     * Creates a copy of these parameters.

@@ -5,7 +5,6 @@ import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Color
 import com.timberglund.ledhost.viewport.Viewport
-import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -25,13 +24,11 @@ class PlasmaPattern : Pattern {
       ParameterDef.FloatParam("scale", "Scale", 0.1f, 5f, 0.1f, 1f),
       ParameterDef.FloatParam("hueMin", "Hue Min", 0f, 360f, 1f, 0f),
       ParameterDef.FloatParam("hueMax", "Hue Max", 0f, 360f, 1f, 360f),
-      ParameterDef.IntParam("brightness", "Brightness", 0, 31, 1, 31),
    )
 
    private var time = 0f
    private var speed = 1f
    private var value = 1f
-   private var brightness = 31
    private var saturation = 1f
    private var scale = 1f
    private var hueMin = 0f
@@ -42,7 +39,6 @@ class PlasmaPattern : Pattern {
    override fun initialize(viewport: Viewport, params: PatternParameters) {
       speed = params.get("speed", 1f)
       value = params.get("value", 1f).coerceIn(0f, 1f)
-      brightness = params.get("brightness", 31f).roundToInt().coerceIn(0, 31)
       saturation = params.get("saturation", 1f).coerceIn(0f, 1f)
       scale = params.get("scale", 1f).coerceIn(0.1f, 5f)
       hueMin = params.get("hueMin", 0f).coerceIn(0f, 360f)
@@ -76,11 +72,11 @@ class PlasmaPattern : Pattern {
             val v4 = sin(dist + time * 0.5f)
 
             // Combine and normalize from -1..1 to hueMin..hueMax range
-            val value = (v1 + v2 + v3 + v4) / 4f
+            val v = (v1 + v2 + v3 + v4) / 4f
             val hueRange = hueMax - hueMin
-            val hue = (((value + 1f) / 2f * hueRange) + hueMin + time * 20f) % 360f
+            val hue = (((v + 1f) / 2f * hueRange) + hueMin + time * 20f) % 360f
 
-            val color = Color.fromHSV(hue, saturation, value, brightness)
+            val color = Color.fromHSV(hue, saturation, value, 31)
             viewport.setPixel(x, y, color)
          }
       }

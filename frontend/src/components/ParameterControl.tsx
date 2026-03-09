@@ -1,4 +1,5 @@
 import type { ParameterDef } from '../types.ts';
+import { ColorPicker } from './ColorPicker.tsx';
 
 interface ParameterControlProps {
    param: ParameterDef;
@@ -58,10 +59,9 @@ export function ParameterControl({ param, value, onChange }: ParameterControlPro
       return (
          <div className="control-group">
             <label>{param.label}</label>
-            <input
-               type="color"
+            <ColorPicker
                value={colorValue}
-               onChange={(e) => onChange(param.name, e.target.value)}
+               onChange={(v) => onChange(param.name, v)}
             />
          </div>
       );

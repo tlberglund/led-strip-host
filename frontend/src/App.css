@@ -557,6 +557,191 @@ button:active {
    border-radius: 2px;
 }
 
+/* ── Color picker ───────────────────────────────────────────────────────── */
+
+.color-picker-container {
+   position: relative;
+   display: inline-block;
+}
+
+.color-swatch {
+   display: inline-block;
+   width: 36px;
+   height: 24px;
+   border-radius: 3px;
+   border: 1px solid #555;
+   cursor: pointer;
+}
+
+.color-picker-backdrop {
+   position: fixed;
+   inset: 0;
+   z-index: 99;
+}
+
+.color-picker-popover {
+   position: absolute;
+   z-index: 100;
+   top: 28px;
+   left: 0;
+   background: #2a2a2a;
+   border: 1px solid #444;
+   border-radius: 6px;
+   padding: 12px;
+   min-width: 220px;
+}
+
+.color-picker-hue-row {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   margin-bottom: 10px;
+}
+
+.color-picker-preview {
+   width: 28px;
+   height: 28px;
+   border-radius: 3px;
+   border: 1px solid #555;
+   flex-shrink: 0;
+}
+
+.color-picker-hue-slider {
+   flex: 1;
+   height: 12px;
+   padding: 0;
+   border: none;
+   border-radius: 6px;
+   background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+   cursor: pointer;
+   appearance: none;
+   -webkit-appearance: none;
+}
+
+.color-picker-hue-slider::-webkit-slider-thumb {
+   -webkit-appearance: none;
+   width: 14px;
+   height: 14px;
+   border-radius: 50%;
+   background: #fff;
+   border: 2px solid #333;
+   cursor: pointer;
+}
+
+.color-picker-hue-slider::-moz-range-thumb {
+   width: 14px;
+   height: 14px;
+   border-radius: 50%;
+   background: #fff;
+   border: 2px solid #333;
+   cursor: pointer;
+}
+
+.color-picker-mode-toggle {
+   display: flex;
+   gap: 4px;
+   margin-bottom: 8px;
+}
+
+.color-picker-mode-toggle button {
+   flex: 1;
+   padding: 4px 8px;
+   font-size: 11px;
+   background: #1a1a1a;
+   border: 1px solid #444;
+   color: #888;
+   border-radius: 3px;
+   cursor: pointer;
+   margin: 0;
+   width: auto;
+   font-weight: 500;
+   transition: none;
+}
+
+.color-picker-mode-toggle button.active {
+   background: #333;
+   color: #fff;
+   border-color: #666;
+}
+
+.color-picker-mode-toggle button:hover {
+   background: #333;
+}
+
+.color-picker-fields {
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
+   gap: 6px;
+   margin-bottom: 8px;
+}
+
+.color-picker-fields > div {
+   display: flex;
+   flex-direction: column;
+   gap: 3px;
+}
+
+.color-picker-fields label {
+   font-size: 10px;
+   color: #666;
+   text-transform: uppercase;
+   letter-spacing: 0.04em;
+   margin: 0;
+   display: block;
+}
+
+.color-picker-fields input[type="number"] {
+   width: 100%;
+   padding: 4px 5px;
+   font-size: 12px;
+   text-align: right;
+   background: #1a1a1a;
+   border: 1px solid #444;
+   border-radius: 3px;
+   color: #fff;
+}
+
+.color-picker-brightness {
+   margin-top: 8px;
+}
+
+.color-picker-brightness-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 4px;
+}
+
+.color-picker-brightness-header label {
+   font-size: 10px;
+   color: #666;
+   text-transform: uppercase;
+   letter-spacing: 0.04em;
+   margin: 0;
+   display: inline;
+}
+
+.color-picker-brightness-header span {
+   font-size: 11px;
+   color: #aaa;
+   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+}
+
+.color-picker-brightness input[type="range"] {
+   width: 100%;
+   padding: 0;
+   border: none;
+   background: transparent;
+}
+
+.color-picker-hex {
+   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+   font-size: 11px;
+   color: #666;
+   margin-top: 8px;
+   text-align: center;
+}
+
 /* ── Settings tab ───────────────────────────────────────────────────────── */
 
 .settings-tab {
