@@ -89,6 +89,16 @@ function App() {
    const [activePresetName, setActivePresetName] = useState<string | null>(null);
    const [activePresetId, setActivePresetId] = useState<number | null>(null);
 
+   // One-time sync: once both the active preset name and the presets list are
+   // available (either order), set activePresetId so the UI reflects the loaded state.
+   const initialPresetSyncDone = useRef(false);
+   useEffect(() => {
+      if(initialPresetSyncDone.current || presetsLoading || !activePresetName) return;
+      initialPresetSyncDone.current = true;
+      const preset = presets.find((p) => p.presetName === activePresetName);
+      if(preset) setActivePresetId(preset.id);
+   }, [presetsLoading, activePresetName, presets]);
+
    // Restore active pattern on mount; re-read the startup default whenever
    // the user navigates back to the pattern tab (they may have changed it in Settings).
    useEffect(() => {
@@ -211,6 +221,7 @@ function App() {
    // Set a preset as the startup default (and load it into the renderer)
    const handleSetDefaultPreset = useCallback((presetId: number, presetName: string) => {
       setActivePresetName(presetName);
+      setActivePresetId(presetId);
       fetch(`/api/saved-patterns/${presetId}/load`, { method: 'POST' })
          .then(async (res) => {
             if(!res.ok) {

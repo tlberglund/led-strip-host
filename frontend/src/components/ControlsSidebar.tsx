@@ -88,8 +88,8 @@ export function ControlsSidebar({
             onSelect={onPatternSelect}
          />
          <div className="preset-status">
-            {loadedPresetName !== null
-               ? <span className="preset-status__name">{loadedPresetName}</span>
+            {activePresetId !== null
+               ? <span className="preset-status__name">{loadedPresetName ?? '…'}</span>
                : <span className="preset-status__unsaved">&lt;unsaved pattern&gt;</span>
             }
          </div>
