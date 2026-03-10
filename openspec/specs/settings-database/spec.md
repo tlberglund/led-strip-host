@@ -92,3 +92,56 @@ The project SHALL include a `docker-compose.yml` at the repository root that sta
 #### Scenario: Developer runs docker compose up
 - **WHEN** a developer runs `docker compose up -d` from the project root
 - **THEN** a PostgreSQL 16 instance starts on port 5432, accessible with the default credentials, with data persisted in a named Docker volume
+
+### Requirement: Active preset persisted in settings
+The system SHALL persist the currently active preset (pattern name and parameters) as a row in the `settings` table so that it survives application restarts.
+
+#### Scenario: Active preset saved
+- **WHEN** the user activates a pattern or changes pattern parameters
+- **THEN** the active preset (serialized as JSON) is upserted into the `settings` table under the key `active_preset`
+
+#### Scenario: Active preset restored on startup
+- **WHEN** the application starts and a `active_preset` row exists in the `settings` table
+- **THEN** the stored preset is read and applied as the initial active pattern before the web server begins accepting requests
+
+#### Scenario: No active preset on startup
+- **WHEN** the application starts and no `active_preset` row exists in the `settings` table
+- **THEN** the application starts with the default pattern and no error is raised
+
+### Requirement: saved_patterns table schema
+The system SHALL create a `saved_patterns` table with columns `id SERIAL PRIMARY KEY`, `name VARCHAR NOT NULL`, `pattern_data JSONB NOT NULL`, and `created_at BIGINT` to persist user-saved patterns across restarts.
+
+#### Scenario: Table created on startup
+- **WHEN** the application starts and the `saved_patterns` table does not yet exist
+- **THEN** the table is created with the specified schema before the web server starts
+
+#### Scenario: Table already exists
+- **WHEN** the application starts and the `saved_patterns` table already exists
+- **THEN** no DDL is executed and existing saved patterns are preserved
+
+### Requirement: SavedPatternsRepository CRUD
+The system SHALL provide a `SavedPatternsRepository` class with typed methods to create, read, update, and delete rows in the `saved_patterns` table.
+
+#### Scenario: Creating a saved pattern
+- **WHEN** `SavedPatternsRepository.create(name, patternData)` is called
+- **THEN** a new row is inserted and the generated `id` along with `created_at` (epoch milliseconds) is returned
+
+#### Scenario: Listing all saved patterns
+- **WHEN** `SavedPatternsRepository.getAll()` is called
+- **THEN** all rows from `saved_patterns` are returned ordered by `id`
+
+#### Scenario: Getting a saved pattern by ID
+- **WHEN** `SavedPatternsRepository.getById(id)` is called for an existing row
+- **THEN** the matching row is returned
+
+#### Scenario: Getting a saved pattern by non-existent ID
+- **WHEN** `SavedPatternsRepository.getById(id)` is called for an ID that does not exist
+- **THEN** `null` is returned
+
+#### Scenario: Updating a saved pattern
+- **WHEN** `SavedPatternsRepository.update(id, name, patternData)` is called for an existing row
+- **THEN** the row is updated and the changes are immediately readable
+
+#### Scenario: Deleting a saved pattern
+- **WHEN** `SavedPatternsRepository.delete(id)` is called
+- **THEN** the row is removed from `saved_patterns` and `getById(id)` subsequently returns `null`
