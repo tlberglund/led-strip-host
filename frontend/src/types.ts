@@ -134,6 +134,9 @@ export interface ScalarSettings {
    targetFPS: number;
    scanIntervalSeconds: number;
    telemetryIntervalSeconds: number;
+   showViewport: boolean;
+   showStrips: boolean;
+   showBackground: boolean;
 }
 
 // Strip setting from GET /api/settings/strips

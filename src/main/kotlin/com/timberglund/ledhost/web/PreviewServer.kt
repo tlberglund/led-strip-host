@@ -401,12 +401,18 @@ class PreviewServer(private val port: Int,
                val fps = settingsRepository.getSetting("targetFPS")?.toIntOrNull() ?: 60
                val scan = settingsRepository.getSetting("scanIntervalSeconds")?.toIntOrNull() ?: 15
                val telemetry = settingsRepository.getSetting("telemetryIntervalSeconds")?.toIntOrNull() ?: 5
+               val showViewport = settingsRepository.getSetting("showViewport")?.toBooleanStrictOrNull() ?: true
+               val showStrips = settingsRepository.getSetting("showStrips")?.toBooleanStrictOrNull() ?: false
+               val showBackground = settingsRepository.getSetting("showBackground")?.toBooleanStrictOrNull() ?: false
                call.respond(ScalarSettingsResponse(
                   viewportWidth = w,
                   viewportHeight = h,
                   targetFPS = fps,
                   scanIntervalSeconds = scan,
-                  telemetryIntervalSeconds = telemetry
+                  telemetryIntervalSeconds = telemetry,
+                  showViewport = showViewport,
+                  showStrips = showStrips,
+                  showBackground = showBackground
                ))
             }
 
@@ -414,7 +420,7 @@ class PreviewServer(private val port: Int,
                val body = call.receive<Map<String, JsonElement>>()
                val errors = mutableListOf<String>()
 
-               val fieldMap = mapOf(
+               val intFieldMap = mapOf(
                   "viewportWidth" to body["viewportWidth"],
                   "viewportHeight" to body["viewportHeight"],
                   "targetFPS" to body["targetFPS"],
@@ -422,11 +428,27 @@ class PreviewServer(private val port: Int,
                   "telemetryIntervalSeconds" to body["telemetryIntervalSeconds"]
                )
 
-               for((key, element) in fieldMap) {
+               for((key, element) in intFieldMap) {
                   if(element == null) continue
                   val v = (element as? JsonPrimitive)?.intOrNull
                   if(v == null || v <= 0) {
                      errors += "$key must be a positive integer"
+                  } else {
+                     settingsRepository.setSetting(key, v.toString())
+                  }
+               }
+
+               val boolFieldMap = mapOf(
+                  "showViewport" to body["showViewport"],
+                  "showStrips" to body["showStrips"],
+                  "showBackground" to body["showBackground"]
+               )
+
+               for((key, element) in boolFieldMap) {
+                  if(element == null) continue
+                  val v = (element as? JsonPrimitive)?.content?.toBooleanStrictOrNull()
+                  if(v == null) {
+                     errors += "$key must be a boolean"
                   } else {
                      settingsRepository.setSetting(key, v.toString())
                   }
@@ -816,7 +838,10 @@ data class ScalarSettingsResponse(
    val viewportHeight: Int,
    val targetFPS: Int,
    val scanIntervalSeconds: Int,
-   val telemetryIntervalSeconds: Int
+   val telemetryIntervalSeconds: Int,
+   val showViewport: Boolean = true,
+   val showStrips: Boolean = false,
+   val showBackground: Boolean = false
 )
 
 @Serializable

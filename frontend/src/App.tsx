@@ -6,6 +6,7 @@ import { useStats } from './hooks/useStats.ts';
 import { useLEDStrips } from './hooks/useLEDStrips.ts';
 import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { useSavedPatterns } from './hooks/useSavedPatterns.ts';
+import { useSettings } from './hooks/useSettings.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
 import { SavedPatternsPanel } from './components/SavedPatternsPanel.tsx';
@@ -44,10 +45,11 @@ function App() {
    // Connection state
    const [connected, setConnected] = useState(false);
 
-   // View toggles
+   // View toggles — initialized from DB settings, persisted on change
    const [showViewport, setShowViewport] = useState(true);
    const [showStrips, setShowStrips] = useState(false);
    const [showBackground, setShowBackground] = useState(false);
+   const viewToggleSettingsReady = useRef(false);
 
    // Pattern controls — dynamic parameter values
    const [selectedPattern, setSelectedPattern] = useState('');
@@ -66,7 +68,23 @@ function App() {
    const stats = useStats(connected);
    const ledStripsRef = useLEDStrips(showStrips);
    const backgroundImageUrl = useBackgroundImage();
+   const { settings: dbSettings, loading: settingsLoading, saveSettings } = useSettings();
    const { presets, loading: presetsLoading, error: presetsError, savePreset, updatePreset, deletePreset, renamePreset } = useSavedPatterns();
+
+   // Seed view toggles from DB once settings load
+   useEffect(() => {
+      if(settingsLoading || viewToggleSettingsReady.current) return;
+      viewToggleSettingsReady.current = true;
+      setShowViewport(dbSettings.showViewport);
+      setShowStrips(dbSettings.showStrips);
+      setShowBackground(dbSettings.showBackground);
+   }, [settingsLoading, dbSettings]);
+
+   // Persist view toggle changes
+   useEffect(() => {
+      if(!viewToggleSettingsReady.current) return;
+      saveSettings({ showViewport, showStrips, showBackground });
+   }, [showViewport, showStrips, showBackground]); // eslint-disable-line react-hooks/exhaustive-deps
 
    const [activePresetName, setActivePresetName] = useState<string | null>(null);
 

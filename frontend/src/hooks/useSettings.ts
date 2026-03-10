@@ -7,6 +7,9 @@ const DEFAULTS: ScalarSettings = {
    targetFPS: 60,
    scanIntervalSeconds: 15,
    telemetryIntervalSeconds: 5,
+   showViewport: true,
+   showStrips: false,
+   showBackground: false,
 };
 
 export function useSettings() {
