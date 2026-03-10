@@ -21,7 +21,7 @@ class PlasmaInterferencePattern : Pattern {
    override val parameters = listOf(
       ParameterDef.ColorParam("colorStart", "Color Start", "#0000ff1f"),
       ParameterDef.ColorParam("colorEnd",   "Color End",   "#ff00ff1f"),
-      ParameterDef.FloatParam("speed", "Speed", 0.1f, 5f, 0.1f, 1f),
+      ParameterDef.FloatParam("speed", "Speed", 0.1f, 2f, 0.1f, 1f),
       ParameterDef.FloatParam("scale", "Scale", 0.1f, 4f, 0.1f, 1f),
    )
 
@@ -32,7 +32,7 @@ class PlasmaInterferencePattern : Pattern {
    private var colorEnd   = Color(255, 0, 255, 31)
 
    override fun initialize(viewport: Viewport, params: PatternParameters) {
-      speed      = params.get("speed", 1f).coerceIn(0.1f, 5f)
+      speed      = params.get("speed", 1f).coerceIn(0.1f, 2f)
       scale      = params.get("scale", 1f).coerceIn(0.1f, 4f)
       colorStart = params.getColor("colorStart", Color(0, 0, 255, 31))
       colorEnd   = params.getColor("colorEnd",   Color(255, 0, 255, 31))

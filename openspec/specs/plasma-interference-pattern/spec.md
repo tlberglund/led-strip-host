@@ -37,7 +37,7 @@ The system SHALL expose the following parameters via `PatternParameters`:
 |------|------|---------|--------------|
 | `colorStart` | ColorParam | `#0000ff1f` | — |
 | `colorEnd` | ColorParam | `#ff00ff1f` | — |
-| `speed` | FloatParam | `1.0` | 0.1–5.0, step 0.1 |
+| `speed` | FloatParam | `1.0` | 0.1–2.0, step 0.1 |
 | `scale` | FloatParam | `1.0` | 0.1–4.0, step 0.1 |
 
 #### Scenario: Default parameter values produce a valid render

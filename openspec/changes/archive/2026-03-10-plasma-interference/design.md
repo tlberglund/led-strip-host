@@ -61,7 +61,7 @@ Linear RGB lerp is chosen over HSV because the cosine-palette aesthetic of this 
 |------|------|-------|---------|---------|
 | `colorStart` | ColorParam | — | `#0000ff1f` | Gradient start (trough of plasma) |
 | `colorEnd` | ColorParam | — | `#ff00ff1f` | Gradient end (peak of plasma) |
-| `speed` | FloatParam | 0.1–5.0, step 0.1 | 1.0 | Time multiplier |
+| `speed` | FloatParam | 0.1–2.0, step 0.1 | 1.0 | Time multiplier |
 | `scale` | FloatParam | 0.1–4.0, step 0.1 | 1.0 | Spatial frequency |
 
 ### Registration
