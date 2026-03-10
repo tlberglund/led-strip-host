@@ -30,8 +30,6 @@ interface ControlsSidebarProps {
    stats: StatsData;
    resolution: string;
    savedPresets: SavedPreset[];
-   activePresetName: string | null;
-   onSetDefaultPreset: (presetId: number, presetName: string) => void;
 }
 
 export function ControlsSidebar({
@@ -56,16 +54,7 @@ export function ControlsSidebar({
    stats,
    resolution,
    savedPresets,
-   activePresetName,
-   onSetDefaultPreset,
 }: ControlsSidebarProps) {
-   function handleDefaultChange(e: React.ChangeEvent<HTMLSelectElement>) {
-      const presetName = e.target.value;
-      if(!presetName) return;
-      const preset = savedPresets.find((p) => p.presetName === presetName);
-      if(preset) onSetDefaultPreset(preset.id, preset.presetName);
-   }
-
    const loadedPresetName = activePresetId !== null
       ? (savedPresets.find((p) => p.id === activePresetId)?.presetName ?? null)
       : null;
@@ -113,24 +102,6 @@ export function ControlsSidebar({
                onClick={onNew}>
                New
             </button>
-         </div>
-
-         <div className="control-group startup-default-group">
-            <label htmlFor="startup-default-select">Startup Default</label>
-            {savedPresets.length === 0
-               ? <p className="startup-default-empty">No saved patterns yet</p>
-               : (
-                  <select
-                     id="startup-default-select"
-                     value={activePresetName ?? ''}
-                     onChange={handleDefaultChange}>
-                     <option value="" disabled>— none selected —</option>
-                     {savedPresets.map((p) => (
-                        <option key={p.id} value={p.presetName}>{p.presetName}</option>
-                     ))}
-                  </select>
-               )
-            }
          </div>
 
          <StatsDisplay stats={stats} resolution={resolution} />

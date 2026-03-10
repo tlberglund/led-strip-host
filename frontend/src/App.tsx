@@ -309,8 +309,6 @@ function App() {
                         stats={stats}
                         resolution={resolution}
                         savedPresets={presets}
-                        activePresetName={activePresetName}
-                        onSetDefaultPreset={handleSetDefaultPreset}
                      />
                   )}
                   {rightTab === 'saved' && (
