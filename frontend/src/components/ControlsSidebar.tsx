@@ -87,20 +87,23 @@ export function ControlsSidebar({
          ))}
          <ApplyPatternButton onApply={onApplyPattern} />
 
-         {savedPresets.length > 0 && (
-            <div className="control-group startup-default-group">
-               <label htmlFor="startup-default-select">Startup Default</label>
-               <select
-                  id="startup-default-select"
-                  value={activePresetName ?? ''}
-                  onChange={handleDefaultChange}>
-                  <option value="" disabled>— none —</option>
-                  {savedPresets.map((p) => (
-                     <option key={p.id} value={p.presetName}>{p.presetName}</option>
-                  ))}
-               </select>
-            </div>
-         )}
+         <div className="control-group startup-default-group">
+            <label htmlFor="startup-default-select">Startup Default</label>
+            {savedPresets.length === 0
+               ? <p className="startup-default-empty">No saved patterns yet</p>
+               : (
+                  <select
+                     id="startup-default-select"
+                     value={activePresetName ?? ''}
+                     onChange={handleDefaultChange}>
+                     <option value="" disabled>— none selected —</option>
+                     {savedPresets.map((p) => (
+                        <option key={p.id} value={p.presetName}>{p.presetName}</option>
+                     ))}
+                  </select>
+               )
+            }
+         </div>
 
          <StatsDisplay stats={stats} resolution={resolution} />
       </div>

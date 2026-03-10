@@ -1154,6 +1154,13 @@ button:active {
    margin-top: 4px;
 }
 
+.startup-default-empty {
+   color: #555;
+   font-size: 12px;
+   margin: 0;
+   font-style: italic;
+}
+
 .preset-name-input--inline {
    width: 100%;
    margin-top: 6px;
