@@ -1,4 +1,3 @@
-import type { StatsData } from '../hooks/useStats.ts';
 import type { PatternInfo, ParameterDef } from '../types.ts';
 import type { SavedPreset } from '../hooks/useSavedPatterns.ts';
 import { ConnectionStatus } from './ConnectionStatus.tsx';
@@ -6,7 +5,6 @@ import { ViewToggles } from './ViewToggles.tsx';
 import { PatternSelector } from './PatternSelector.tsx';
 import { ParameterControl } from './ParameterControl.tsx';
 import { SavePatternButton } from './SavePatternButton.tsx';
-import { StatsDisplay } from './StatsDisplay.tsx';
 
 interface ControlsSidebarProps {
    connected: boolean;
@@ -27,8 +25,6 @@ interface ControlsSidebarProps {
    onSave: () => Promise<void>;
    onSaveAs: (name: string) => Promise<void>;
    onNew: () => void;
-   stats: StatsData;
-   resolution: string;
    savedPresets: SavedPreset[];
 }
 
@@ -51,8 +47,6 @@ export function ControlsSidebar({
    onSave,
    onSaveAs,
    onNew,
-   stats,
-   resolution,
    savedPresets,
 }: ControlsSidebarProps) {
    const loadedPresetName = activePresetId !== null
@@ -104,7 +98,6 @@ export function ControlsSidebar({
             </button>
          </div>
 
-         <StatsDisplay stats={stats} resolution={resolution} />
       </div>
    );
 }

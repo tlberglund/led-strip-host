@@ -8,6 +8,7 @@ import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
 import { useSavedPatterns } from './hooks/useSavedPatterns.ts';
 import { useSettings } from './hooks/useSettings.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
+import { StatsDisplay } from './components/StatsDisplay.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
 import { SavedPatternsPanel } from './components/SavedPatternsPanel.tsx';
 import { StripManagerTab } from './components/StripManagerTab.tsx';
@@ -240,24 +241,27 @@ function App() {
    return (
       <>
          <div id="top-nav">
-            <h1>LED Strip Host</h1>
-            <div className="tabs" role="tablist">
-               <button
-                  className={`tab ${activeTab === 'pattern' ? 'active' : ''}`}
-                  onClick={() => navigateTo('pattern')}>
-                  Pattern
-               </button>
-               <button
-                  className={`tab ${activeTab === 'strips' ? 'active' : ''}`}
-                  onClick={() => navigateTo('strips')}>
-                  Strips
-               </button>
-               <button
-                  className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
-                  onClick={() => navigateTo('settings')}>
-                  Settings
-               </button>
+            <div id="top-nav-left">
+               <h1>LED Strip Host</h1>
+               <div className="tabs" role="tablist">
+                  <button
+                     className={`tab ${activeTab === 'pattern' ? 'active' : ''}`}
+                     onClick={() => navigateTo('pattern')}>
+                     Pattern
+                  </button>
+                  <button
+                     className={`tab ${activeTab === 'strips' ? 'active' : ''}`}
+                     onClick={() => navigateTo('strips')}>
+                     Strips
+                  </button>
+                  <button
+                     className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+                     onClick={() => navigateTo('settings')}>
+                     Settings
+                  </button>
+               </div>
             </div>
+            <StatsDisplay stats={stats} resolution={resolution} />
          </div>
 
          {activeTab === 'pattern' && (
@@ -306,8 +310,6 @@ function App() {
                         onSave={handleSave}
                         onSaveAs={handleSaveAs}
                         onNew={handleNew}
-                        stats={stats}
-                        resolution={resolution}
                         savedPresets={presets}
                      />
                   )}
