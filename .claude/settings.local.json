@@ -29,7 +29,8 @@
       "Bash(openspec new:*)",
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
-      "Bash(openspec list:*)"
+      "Bash(openspec list:*)",
+      "WebFetch(domain:www.4rknova.com)"
     ]
   }
 }
