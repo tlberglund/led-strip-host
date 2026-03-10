@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSettings } from '../hooks/useSettings.ts';
 import { useStripSettings } from '../hooks/useStripSettings.ts';
+import { useSavedPatterns } from '../hooks/useSavedPatterns.ts';
 import type { StripSetting, StripSettingInput } from '../types.ts';
 
 // ── Feedback helper ────────────────────────────────────────────────────────
@@ -511,11 +512,72 @@ function StripsSection() {
    );
 }
 
+// ── Startup Pattern section ────────────────────────────────────────────────
+
+function StartupPatternSection() {
+   const { presets, loading } = useSavedPatterns();
+   const [activePresetName, setActivePresetName] = useState<string | null>(null);
+   const { feedback, show } = useFeedback();
+
+   useEffect(() => {
+      fetch('/api/active-pattern')
+         .then((r) => (r.ok ? r.json() : null))
+         .then((data) => { if(data?.presetName) setActivePresetName(data.presetName); })
+         .catch(() => {});
+   }, []);
+
+   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+      const presetName = e.target.value;
+      if(!presetName) return;
+      const preset = presets.find((p) => p.presetName === presetName);
+      if(!preset) return;
+      try {
+         const res = await fetch(`/api/saved-patterns/${preset.id}/load`, { method: 'POST' });
+         if(res.ok) {
+            setActivePresetName(presetName);
+            show('success', `"${presetName}" will load on next startup`);
+         } else {
+            show('error', 'Failed to set startup pattern');
+         }
+      } catch(e) {
+         show('error', String(e));
+      }
+   }
+
+   if(loading) return <p className="settings-loading">Loading…</p>;
+
+   if(presets.length === 0) {
+      return <p className="settings-empty">No saved patterns yet. Save a pattern from the Pattern tab first.</p>;
+   }
+
+   return (
+      <>
+         <div className="settings-field">
+            <label htmlFor="startup-pattern-select">Active on Startup</label>
+            <select
+               id="startup-pattern-select"
+               value={activePresetName ?? ''}
+               onChange={handleChange}>
+               <option value="" disabled>— none selected —</option>
+               {presets.map((p) => (
+                  <option key={p.id} value={p.presetName}>{p.presetName}</option>
+               ))}
+            </select>
+         </div>
+         <FeedbackBanner feedback={feedback} />
+      </>
+   );
+}
+
 // ── Root SettingsTab ───────────────────────────────────────────────────────
 
 export function SettingsTab() {
    return (
       <div className="settings-tab">
+         <SectionCard title="Startup Pattern">
+            <StartupPatternSection />
+         </SectionCard>
+
          <SectionCard title="Viewport & Performance">
             <ViewportSection />
          </SectionCard>

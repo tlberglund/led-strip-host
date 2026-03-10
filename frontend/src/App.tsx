@@ -70,25 +70,26 @@ function App() {
 
    const [activePresetName, setActivePresetName] = useState<string | null>(null);
 
-   // Restore active pattern from backend on mount
+   // Restore active pattern on mount; re-read the startup default whenever
+   // the user navigates back to the pattern tab (they may have changed it in Settings).
    useEffect(() => {
-      async function restoreActivePattern() {
+      async function syncActivePattern(isMount: boolean) {
          try {
             const response = await fetch('/api/active-pattern');
             if(!response.ok) return;
             const data: { patternName: string; params: Record<string, unknown>; presetName?: string } = await response.json();
-            if(data.patternName) {
+            if(isMount && data.patternName) {
                setSelectedPattern(data.patternName);
                setParamValues(data.params as Record<string, number | string>);
             }
-            if(data.presetName) setActivePresetName(data.presetName);
+            setActivePresetName(data.presetName ?? null);
          }
          catch(e) {
             // Non-fatal
          }
       }
-      restoreActivePattern();
-   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      syncActivePattern(activeTab === 'pattern');
+   }, [activeTab]); // re-runs whenever the tab changes
 
    // Look up the currently selected pattern's info
    const selectedPatternInfo: PatternInfo | undefined = useMemo(() => {
