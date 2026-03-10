@@ -207,7 +207,6 @@ function App() {
 
    // Load a saved preset into the renderer (without changing the startup default)
    const handleLoadPreset = useCallback((presetId: number, patternName: string, params: Record<string, unknown>) => {
-      console.log('[handleLoadPreset] presetId:', presetId, 'type:', typeof presetId);
       const typedParams = params as Record<string, number | string>;
       setSelectedPattern(patternName);
       setParamValues(typedParams);

@@ -70,8 +70,6 @@ export function ControlsSidebar({
       ? (savedPresets.find((p) => p.id === activePresetId)?.presetName ?? null)
       : null;
 
-   console.log('[ControlsSidebar] render — activePresetId:', activePresetId, 'loadedPresetName:', loadedPresetName, 'savedPresets ids:', savedPresets.map(p => p.id));
-
    return (
       <div id="controls">
          <ConnectionStatus connected={connected} />
