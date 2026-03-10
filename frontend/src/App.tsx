@@ -87,6 +87,7 @@ function App() {
    }, [showViewport, showStrips, showBackground]); // eslint-disable-line react-hooks/exhaustive-deps
 
    const [activePresetName, setActivePresetName] = useState<string | null>(null);
+   const [activePresetId, setActivePresetId] = useState<number | null>(null);
 
    // Restore active pattern on mount; re-read the startup default whenever
    // the user navigates back to the pattern tab (they may have changed it in Settings).
@@ -123,6 +124,7 @@ function App() {
    // Initialize parameter defaults when a pattern is selected
    const handlePatternSelect = useCallback((patternName: string) => {
       setSelectedPattern(patternName);
+      setActivePresetId(null);
 
       // Build default values from the pattern's parameter definitions
       const patternInfo = patterns.find((p) => p.name === patternName);
@@ -162,28 +164,43 @@ function App() {
       });
    }, [selectedPattern]);
 
-   const handleApplyPattern = useCallback(async () => {
-      if (!selectedPattern) return;
+   const handleSave = useCallback(async () => {
+      if(activePresetId === null || !selectedPattern) return;
+      await updatePreset(activePresetId, {
+         patternName: selectedPattern,
+         params: paramValues as Record<string, unknown>,
+      });
+   }, [activePresetId, selectedPattern, paramValues, updatePreset]);
 
-      try {
-         const response = await fetch(`/api/pattern/${selectedPattern}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(paramValues),
-         });
-         if (!response.ok) {
-            console.error('Failed to apply pattern:', response.status);
-         }
-      } catch (e) {
-         console.error('Exception applying pattern:', e);
+   const handleSaveAs = useCallback(async (name: string) => {
+      if(!selectedPattern) return;
+      const created = await savePreset(name, selectedPattern, paramValues as Record<string, unknown>);
+      setActivePresetId(created.id);
+   }, [selectedPattern, paramValues, savePreset]);
+
+   const handleNew = useCallback(() => {
+      if(patterns.length === 0) return;
+      const firstPattern = patterns[0];
+      const defaults: Record<string, number | string> = {};
+      for(const param of firstPattern.parameters) {
+         defaults[param.name] = param.default;
       }
-   }, [selectedPattern, paramValues]);
+      setSelectedPattern(firstPattern.name);
+      setParamValues(defaults);
+      setActivePresetId(null);
+      fetch(`/api/pattern/${firstPattern.name}`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(defaults),
+      }).catch((e) => console.error('Failed to apply pattern:', e));
+   }, [patterns]);
 
    // Load a saved preset into the renderer (without changing the startup default)
-   const handleLoadPreset = useCallback((patternName: string, params: Record<string, unknown>) => {
+   const handleLoadPreset = useCallback((presetId: number, patternName: string, params: Record<string, unknown>) => {
       const typedParams = params as Record<string, number | string>;
       setSelectedPattern(patternName);
       setParamValues(typedParams);
+      setActivePresetId(presetId);
       fetch(`/api/pattern/${patternName}`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
@@ -274,7 +291,10 @@ function App() {
                         parameters={selectedPatternInfo?.parameters ?? []}
                         paramValues={paramValues}
                         onParamChange={handleParamChange}
-                        onApplyPattern={handleApplyPattern}
+                        activePresetId={activePresetId}
+                        onSave={handleSave}
+                        onSaveAs={handleSaveAs}
+                        onNew={handleNew}
                         stats={stats}
                         resolution={resolution}
                         savedPresets={presets}
@@ -288,6 +308,7 @@ function App() {
                         loading={presetsLoading}
                         error={presetsError}
                         activePresetName={activePresetName}
+                        activePresetId={activePresetId}
                         onLoad={handleLoadPreset}
                         onSetDefault={handleSetDefaultPreset}
                         onSave={savePreset}

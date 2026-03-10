@@ -6,7 +6,8 @@ interface SavedPatternsPanelProps {
    loading: boolean;
    error: string | null;
    activePresetName: string | null;
-   onLoad: (patternName: string, params: Record<string, unknown>) => void;
+   activePresetId: number | null;
+   onLoad: (presetId: number, patternName: string, params: Record<string, unknown>) => void;
    onSetDefault: (presetId: number, presetName: string) => void;
    onSave: (presetName: string, patternName: string, params: Record<string, unknown>) => Promise<SavedPreset>;
    onUpdate: (id: number, patch: { presetName?: string; patternName?: string; params?: Record<string, unknown> }) => Promise<SavedPreset>;
@@ -26,6 +27,7 @@ export function SavedPatternsPanel({
    loading,
    error,
    activePresetName,
+   activePresetId,
    onLoad,
    onSetDefault,
    onSave,
@@ -40,7 +42,7 @@ export function SavedPatternsPanel({
    const [feedback, setFeedback] = useState<Feedback | null>(null);
    const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-   const [loadedPresetId, setLoadedPresetId] = useState<number | null>(null);
+   const loadedPresetId = activePresetId;
    const [editingId, setEditingId] = useState<number | null>(null);
    const [editingName, setEditingName] = useState('');
    const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -52,8 +54,7 @@ export function SavedPatternsPanel({
    }
 
    function handleLoad(preset: SavedPreset) {
-      onLoad(preset.patternName, preset.params);
-      setLoadedPresetId(preset.id);
+      onLoad(preset.id, preset.patternName, preset.params);
    }
 
    async function handleSaveAs() {
@@ -116,7 +117,7 @@ export function SavedPatternsPanel({
    async function confirmDelete(id: number) {
       try {
          await onDelete(id);
-         if(loadedPresetId === id) setLoadedPresetId(null);
+         // activePresetId in parent will be cleared if needed
          setDeletingId(null);
          showFeedback('Preset deleted', 'success');
       }

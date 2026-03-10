@@ -5,7 +5,7 @@ import { ConnectionStatus } from './ConnectionStatus.tsx';
 import { ViewToggles } from './ViewToggles.tsx';
 import { PatternSelector } from './PatternSelector.tsx';
 import { ParameterControl } from './ParameterControl.tsx';
-import { ApplyPatternButton } from './ApplyPatternButton.tsx';
+import { SavePatternButton } from './SavePatternButton.tsx';
 import { StatsDisplay } from './StatsDisplay.tsx';
 
 interface ControlsSidebarProps {
@@ -23,7 +23,10 @@ interface ControlsSidebarProps {
    parameters: ParameterDef[];
    paramValues: Record<string, number | string>;
    onParamChange: (name: string, value: number | string) => void;
-   onApplyPattern: () => void;
+   activePresetId: number | null;
+   onSave: () => Promise<void>;
+   onSaveAs: (name: string) => Promise<void>;
+   onNew: () => void;
    stats: StatsData;
    resolution: string;
    savedPresets: SavedPreset[];
@@ -46,7 +49,10 @@ export function ControlsSidebar({
    parameters,
    paramValues,
    onParamChange,
-   onApplyPattern,
+   activePresetId,
+   onSave,
+   onSaveAs,
+   onNew,
    stats,
    resolution,
    savedPresets,
@@ -59,6 +65,10 @@ export function ControlsSidebar({
       const preset = savedPresets.find((p) => p.presetName === presetName);
       if(preset) onSetDefaultPreset(preset.id, preset.presetName);
    }
+
+   const loadedPresetName = activePresetId !== null
+      ? (savedPresets.find((p) => p.id === activePresetId)?.presetName ?? null)
+      : null;
 
    return (
       <div id="controls">
@@ -77,6 +87,12 @@ export function ControlsSidebar({
             selectedPattern={selectedPattern}
             onSelect={onPatternSelect}
          />
+         <div className="preset-status">
+            {loadedPresetName !== null
+               ? <span className="preset-status__name">{loadedPresetName}</span>
+               : <span className="preset-status__unsaved">&lt;unsaved pattern&gt;</span>
+            }
+         </div>
          {parameters.map((param) => (
             <ParameterControl
                key={param.name}
@@ -85,7 +101,19 @@ export function ControlsSidebar({
                onChange={onParamChange}
             />
          ))}
-         <ApplyPatternButton onApply={onApplyPattern} />
+         <div className="pattern-actions">
+            <SavePatternButton
+               activePresetId={activePresetId}
+               onSave={onSave}
+               onSaveAs={onSaveAs}
+            />
+            <button
+               className="settings-save-btn settings-save-btn--sm settings-save-btn--neutral"
+               title="Start a new unsaved pattern"
+               onClick={onNew}>
+               New
+            </button>
+         </div>
 
          <div className="control-group startup-default-group">
             <label htmlFor="startup-default-select">Startup Default</label>

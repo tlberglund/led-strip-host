@@ -1201,3 +1201,48 @@ button:active {
    font-size: 11px;
    color: #ff9090;
 }
+
+/* Save / New pattern buttons in ControlsSidebar */
+.pattern-actions {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   margin-top: 10px;
+   margin-bottom: 4px;
+}
+
+.save-pattern-btn-wrap {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+}
+
+.save-pattern-input-wrap {
+   display: flex;
+   flex-direction: column;
+   gap: 4px;
+   width: 100%;
+}
+
+.save-input-actions {
+   display: flex;
+   gap: 4px;
+}
+
+/* Preset status label below PatternSelector */
+.preset-status {
+   font-size: 11px;
+   margin-top: -4px;
+   margin-bottom: 6px;
+   padding-left: 2px;
+}
+
+.preset-status__name {
+   color: #7ec8a0;
+   font-style: italic;
+}
+
+.preset-status__unsaved {
+   color: #888;
+   font-style: italic;
+}
