@@ -1,5 +1,6 @@
 import type { StatsData } from '../hooks/useStats.ts';
 import type { PatternInfo, ParameterDef } from '../types.ts';
+import type { SavedPreset } from '../hooks/useSavedPatterns.ts';
 import { ConnectionStatus } from './ConnectionStatus.tsx';
 import { ViewToggles } from './ViewToggles.tsx';
 import { PatternSelector } from './PatternSelector.tsx';
@@ -25,6 +26,9 @@ interface ControlsSidebarProps {
    onApplyPattern: () => void;
    stats: StatsData;
    resolution: string;
+   savedPresets: SavedPreset[];
+   activePresetName: string | null;
+   onSetDefaultPreset: (presetId: number, presetName: string) => void;
 }
 
 export function ControlsSidebar({
@@ -45,7 +49,17 @@ export function ControlsSidebar({
    onApplyPattern,
    stats,
    resolution,
+   savedPresets,
+   activePresetName,
+   onSetDefaultPreset,
 }: ControlsSidebarProps) {
+   function handleDefaultChange(e: React.ChangeEvent<HTMLSelectElement>) {
+      const presetName = e.target.value;
+      if(!presetName) return;
+      const preset = savedPresets.find((p) => p.presetName === presetName);
+      if(preset) onSetDefaultPreset(preset.id, preset.presetName);
+   }
+
    return (
       <div id="controls">
          <ConnectionStatus connected={connected} />
@@ -72,6 +86,22 @@ export function ControlsSidebar({
             />
          ))}
          <ApplyPatternButton onApply={onApplyPattern} />
+
+         {savedPresets.length > 0 && (
+            <div className="control-group startup-default-group">
+               <label htmlFor="startup-default-select">Startup Default</label>
+               <select
+                  id="startup-default-select"
+                  value={activePresetName ?? ''}
+                  onChange={handleDefaultChange}>
+                  <option value="" disabled>— none —</option>
+                  {savedPresets.map((p) => (
+                     <option key={p.id} value={p.presetName}>{p.presetName}</option>
+                  ))}
+               </select>
+            </div>
+         )}
+
          <StatsDisplay stats={stats} resolution={resolution} />
       </div>
    );

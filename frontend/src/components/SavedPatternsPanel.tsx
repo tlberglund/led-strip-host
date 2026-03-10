@@ -1,9 +1,17 @@
 import { useState, useRef } from 'react';
-import { useSavedPatterns } from '../hooks/useSavedPatterns.ts';
 import type { SavedPreset } from '../hooks/useSavedPatterns.ts';
 
 interface SavedPatternsPanelProps {
+   presets: SavedPreset[];
+   loading: boolean;
+   error: string | null;
+   activePresetName: string | null;
    onLoad: (patternName: string, params: Record<string, unknown>) => void;
+   onSetDefault: (presetId: number, presetName: string) => void;
+   onSave: (presetName: string, patternName: string, params: Record<string, unknown>) => Promise<SavedPreset>;
+   onUpdate: (id: number, patch: { presetName?: string; patternName?: string; params?: Record<string, unknown> }) => Promise<SavedPreset>;
+   onDelete: (id: number) => Promise<void>;
+   onRename: (id: number, newName: string) => Promise<SavedPreset>;
    currentPatternName: string;
    currentParams: Record<string, number | string>;
 }
@@ -13,9 +21,20 @@ interface Feedback {
    kind: 'success' | 'error';
 }
 
-export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }: SavedPatternsPanelProps) {
-   const { presets, loading, error, savePreset, updatePreset, deletePreset, renamePreset } = useSavedPatterns();
-
+export function SavedPatternsPanel({
+   presets,
+   loading,
+   error,
+   activePresetName,
+   onLoad,
+   onSetDefault,
+   onSave,
+   onUpdate,
+   onDelete,
+   onRename,
+   currentPatternName,
+   currentParams,
+}: SavedPatternsPanelProps) {
    const [saveAsName, setSaveAsName] = useState('');
    const [saveAsError, setSaveAsError] = useState<string | null>(null);
    const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -42,7 +61,7 @@ export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }
       if(!name) return;
       setSaveAsError(null);
       try {
-         await savePreset(name, currentPatternName, currentParams as Record<string, unknown>);
+         await onSave(name, currentPatternName, currentParams as Record<string, unknown>);
          setSaveAsName('');
          showFeedback(`Saved "${name}"`, 'success');
       }
@@ -60,7 +79,7 @@ export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }
    async function handleUpdate() {
       if(loadedPresetId === null) return;
       try {
-         await updatePreset(loadedPresetId, {
+         await onUpdate(loadedPresetId, {
             patternName: currentPatternName,
             params: currentParams as Record<string, unknown>,
          });
@@ -84,7 +103,7 @@ export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }
          return;
       }
       try {
-         await renamePreset(preset.id, name);
+         await onRename(preset.id, name);
          setEditingId(null);
          showFeedback(`Renamed to "${name}"`, 'success');
       }
@@ -96,7 +115,7 @@ export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }
 
    async function confirmDelete(id: number) {
       try {
-         await deletePreset(id);
+         await onDelete(id);
          if(loadedPresetId === id) setLoadedPresetId(null);
          setDeletingId(null);
          showFeedback('Preset deleted', 'success');
@@ -118,73 +137,79 @@ export function SavedPatternsPanel({ onLoad, currentPatternName, currentParams }
             ? <p className="saved-patterns-empty">No saved patterns yet</p>
             : (
                <ul className="saved-preset-list">
-                  {presets.map((preset) => (
-                     <li
-                        key={preset.id}
-                        className={`saved-preset-row${loadedPresetId === preset.id ? ' preset-active' : ''}`}>
+                  {presets.map((preset) => {
+                     const isDefault = preset.presetName === activePresetName;
+                     return (
+                        <li
+                           key={preset.id}
+                           className={`saved-preset-row${loadedPresetId === preset.id ? ' preset-loaded' : ''}${isDefault ? ' preset-default' : ''}`}>
 
-                        <div className="saved-preset-info">
-                           {editingId === preset.id
-                              ? (
-                                 <input
-                                    className="preset-name-input"
-                                    value={editingName}
-                                    autoFocus
-                                    onChange={(e) => setEditingName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                       if(e.key === 'Enter') commitEdit(preset);
-                                       if(e.key === 'Escape') setEditingId(null);
-                                    }}
-                                    onBlur={() => commitEdit(preset)}
-                                 />
-                              )
-                              : <span className="saved-preset-name">{preset.presetName}</span>
-                           }
-                           <span className="saved-preset-badge">{preset.patternName}</span>
-                        </div>
+                           <div
+                              className="saved-preset-info"
+                              title={isDefault ? 'Startup default' : 'Click to set as startup default'}
+                              onClick={() => onSetDefault(preset.id, preset.presetName)}>
+                              {isDefault && <span className="preset-default-indicator" aria-label="Startup default">★</span>}
+                              <span className="saved-preset-name">{preset.presetName}</span>
+                              <span className="saved-preset-badge">{preset.patternName}</span>
+                           </div>
 
-                        <div className="saved-preset-actions">
-                           {deletingId === preset.id
-                              ? (
-                                 <>
-                                    <span className="saved-preset-confirm-label">Delete?</span>
-                                    <button
-                                       className="settings-save-btn settings-save-btn--sm settings-save-btn--danger"
-                                       onClick={() => confirmDelete(preset.id)}>
-                                       Yes
-                                    </button>
-                                    <button
-                                       className="settings-save-btn settings-save-btn--sm settings-save-btn--neutral"
-                                       onClick={() => setDeletingId(null)}>
-                                       No
-                                    </button>
-                                 </>
-                              )
-                              : (
-                                 <>
-                                    <button
-                                       className="settings-save-btn settings-save-btn--sm"
-                                       onClick={() => handleLoad(preset)}>
-                                       Load
-                                    </button>
-                                    <button
-                                       className="settings-save-btn settings-save-btn--sm settings-save-btn--neutral"
-                                       title="Rename"
-                                       onClick={() => startEdit(preset)}>
-                                       ✎
-                                    </button>
-                                    <button
-                                       className="settings-save-btn settings-save-btn--sm settings-save-btn--danger"
-                                       title="Delete"
-                                       onClick={() => { setDeletingId(preset.id); setEditingId(null); }}>
-                                       ✕
-                                    </button>
-                                 </>
-                              )
-                           }
-                        </div>
-                     </li>
-                  ))}
+                           <div className="saved-preset-actions">
+                              {deletingId === preset.id
+                                 ? (
+                                    <>
+                                       <span className="saved-preset-confirm-label">Delete?</span>
+                                       <button
+                                          className="settings-save-btn settings-save-btn--sm settings-save-btn--danger"
+                                          onClick={() => confirmDelete(preset.id)}>
+                                          Yes
+                                       </button>
+                                       <button
+                                          className="settings-save-btn settings-save-btn--sm settings-save-btn--neutral"
+                                          onClick={() => setDeletingId(null)}>
+                                          No
+                                       </button>
+                                    </>
+                                 )
+                                 : (
+                                    <>
+                                       <button
+                                          className="settings-save-btn settings-save-btn--sm"
+                                          onClick={() => handleLoad(preset)}>
+                                          Load
+                                       </button>
+                                       <button
+                                          className="settings-save-btn settings-save-btn--sm settings-save-btn--neutral"
+                                          title="Rename"
+                                          onClick={() => startEdit(preset)}>
+                                          ✎
+                                       </button>
+                                       <button
+                                          className="settings-save-btn settings-save-btn--sm settings-save-btn--danger"
+                                          title="Delete"
+                                          onClick={() => { setDeletingId(preset.id); setEditingId(null); }}>
+                                          ✕
+                                       </button>
+                                    </>
+                                 )
+                              }
+                           </div>
+
+                           {editingId === preset.id && (
+                              <input
+                                 className="preset-name-input preset-name-input--inline"
+                                 value={editingName}
+                                 autoFocus
+                                 onChange={(e) => setEditingName(e.target.value)}
+                                 onKeyDown={(e) => {
+                                    if(e.key === 'Enter') commitEdit(preset);
+                                    if(e.key === 'Escape') setEditingId(null);
+                                 }}
+                                 onBlur={() => commitEdit(preset)}
+                              />
+                           )}
+                        </li>
+                     );
+                  })}
                </ul>
             )
          }

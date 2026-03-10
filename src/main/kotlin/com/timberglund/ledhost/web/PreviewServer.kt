@@ -65,6 +65,7 @@ class PreviewServer(private val port: Int,
    private var currentPattern: Pattern? = null
    private var currentPatternName: String = ""
    private var currentParamValues: Map<String, Any> = emptyMap()
+   private var currentPresetName: String? = null
    private var patternChangeListener: ((String, PatternParameters) -> Unit)? = null
 
    /**
@@ -78,9 +79,10 @@ class PreviewServer(private val port: Int,
     * Seeds the in-memory active-pattern state from startup restore (before server starts).
     * Does NOT call the change listener or update the renderer — Application.kt handles that.
     */
-   fun setCurrentPattern(name: String, params: Map<String, Any>) {
+   fun setCurrentPattern(name: String, params: Map<String, Any>, presetName: String? = null) {
       currentPatternName = name
       currentParamValues = params
+      currentPresetName = presetName
       currentPattern = patternRegistry.get(name)
    }
 
@@ -91,6 +93,7 @@ class PreviewServer(private val port: Int,
    private suspend fun loadPreset(preset: SavedPatternRow) {
       val params = preset.params.jsonObjectToMap()
       setPattern(preset.patternName, params)
+      currentPresetName = preset.presetName
       settingsRepository.setActivePresetName(preset.presetName)
    }
 
@@ -299,7 +302,8 @@ class PreviewServer(private val port: Int,
             get("/api/active-pattern") {
                call.respond(ActivePatternResponse(
                   patternName = currentPatternName,
-                  params = currentParamValues.mapToJsonObject()
+                  params = currentParamValues.mapToJsonObject(),
+                  presetName = currentPresetName
                ))
             }
 
@@ -854,7 +858,8 @@ data class UpdateStripRequest(
 @Serializable
 data class ActivePatternResponse(
    val patternName: String,
-   val params: kotlinx.serialization.json.JsonObject
+   val params: kotlinx.serialization.json.JsonObject,
+   val presetName: String? = null
 )
 
 @Serializable

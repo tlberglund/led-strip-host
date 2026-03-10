@@ -5,6 +5,7 @@ import { usePatterns } from './hooks/usePatterns.ts';
 import { useStats } from './hooks/useStats.ts';
 import { useLEDStrips } from './hooks/useLEDStrips.ts';
 import { useBackgroundImage } from './hooks/useBackgroundImage.ts';
+import { useSavedPatterns } from './hooks/useSavedPatterns.ts';
 import { PreviewArea } from './components/PreviewArea.tsx';
 import { ControlsSidebar } from './components/ControlsSidebar.tsx';
 import { SavedPatternsPanel } from './components/SavedPatternsPanel.tsx';
@@ -65,21 +66,25 @@ function App() {
    const stats = useStats(connected);
    const ledStripsRef = useLEDStrips(showStrips);
    const backgroundImageUrl = useBackgroundImage();
+   const { presets, loading: presetsLoading, error: presetsError, savePreset, updatePreset, deletePreset, renamePreset } = useSavedPatterns();
 
-   // Restore active pattern from backend on mount (task 6.1)
+   const [activePresetName, setActivePresetName] = useState<string | null>(null);
+
+   // Restore active pattern from backend on mount
    useEffect(() => {
       async function restoreActivePattern() {
          try {
             const response = await fetch('/api/active-pattern');
             if(!response.ok) return;
-            const data: { patternName: string; params: Record<string, unknown> } = await response.json();
+            const data: { patternName: string; params: Record<string, unknown>; presetName?: string } = await response.json();
             if(data.patternName) {
                setSelectedPattern(data.patternName);
                setParamValues(data.params as Record<string, number | string>);
             }
+            if(data.presetName) setActivePresetName(data.presetName);
          }
          catch(e) {
-            // Non-fatal: backend may not have an active pattern yet
+            // Non-fatal
          }
       }
       restoreActivePattern();
@@ -155,7 +160,7 @@ function App() {
       }
    }, [selectedPattern, paramValues]);
 
-   // Load a saved preset: override pattern + params then apply immediately
+   // Load a saved preset into the renderer (without changing the startup default)
    const handleLoadPreset = useCallback((patternName: string, params: Record<string, unknown>) => {
       const typedParams = params as Record<string, number | string>;
       setSelectedPattern(patternName);
@@ -165,6 +170,24 @@ function App() {
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(typedParams),
       }).catch((e) => console.error('Failed to apply preset:', e));
+   }, []);
+
+   // Set a preset as the startup default (and load it into the renderer)
+   const handleSetDefaultPreset = useCallback((presetId: number, presetName: string) => {
+      setActivePresetName(presetName);
+      fetch(`/api/saved-patterns/${presetId}/load`, { method: 'POST' })
+         .then(async (res) => {
+            if(!res.ok) {
+               console.error('Failed to set default preset:', res.status);
+               setActivePresetName(null);
+               return;
+            }
+            // Backend applied the preset; sync local pattern + param state
+            const data: { patternName?: string; params?: Record<string, unknown> } = await res.json().catch(() => ({}));
+            if(data.patternName) setSelectedPattern(data.patternName);
+            if(data.params) setParamValues(data.params as Record<string, number | string>);
+         })
+         .catch((e) => { console.error('Failed to set default preset:', e); setActivePresetName(null); });
    }, []);
 
    return (
@@ -235,11 +258,23 @@ function App() {
                         onApplyPattern={handleApplyPattern}
                         stats={stats}
                         resolution={resolution}
+                        savedPresets={presets}
+                        activePresetName={activePresetName}
+                        onSetDefaultPreset={handleSetDefaultPreset}
                      />
                   )}
                   {rightTab === 'saved' && (
                      <SavedPatternsPanel
+                        presets={presets}
+                        loading={presetsLoading}
+                        error={presetsError}
+                        activePresetName={activePresetName}
                         onLoad={handleLoadPreset}
+                        onSetDefault={handleSetDefaultPreset}
+                        onSave={savePreset}
+                        onUpdate={updatePreset}
+                        onDelete={deletePreset}
+                        onRename={renamePreset}
                         currentPatternName={selectedPattern}
                         currentParams={paramValues}
                      />

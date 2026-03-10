@@ -1075,9 +1075,20 @@ button:active {
    border: 1px solid transparent;
 }
 
-.preset-active {
+.preset-loaded {
    border-color: #4a9eff44;
    background: #1a2a3a;
+}
+
+.preset-default {
+   border-color: #ffb74d66;
+   background: #1e1a10;
+}
+
+.preset-default-indicator {
+   color: #ffb74d;
+   font-size: 11px;
+   flex-shrink: 0;
 }
 
 .saved-preset-info {
@@ -1086,6 +1097,14 @@ button:active {
    gap: 8px;
    min-width: 0;
    flex: 1;
+   cursor: pointer;
+   border-radius: 3px;
+   padding: 2px 4px;
+   margin: -2px -4px;
+}
+
+.saved-preset-info:hover {
+   background: #2a2a2a;
 }
 
 .saved-preset-name {
@@ -1127,6 +1146,19 @@ button:active {
    border: 1px solid #4a9eff;
    border-radius: 3px;
    color: #fff;
+}
+
+.startup-default-group {
+   border-top: 1px solid #333;
+   padding-top: 16px;
+   margin-top: 4px;
+}
+
+.preset-name-input--inline {
+   width: 100%;
+   margin-top: 6px;
+   padding: 4px 7px;
+   font-size: 12px;
 }
 
 .save-as-row {

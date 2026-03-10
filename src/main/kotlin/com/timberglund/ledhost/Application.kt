@@ -152,7 +152,7 @@ fun main(args: Array<String>) {
    )
 
    // Restore active preset from database, or fall back to first registered pattern
-   data class StartupPattern(val name: String, val rawParams: Map<String, Any>)
+   data class StartupPattern(val name: String, val rawParams: Map<String, Any>, val presetName: String? = null)
    val restoredPreset: StartupPattern? = runBlocking {
       val presetName = settingsRepository.getActivePresetName()
       if(presetName != null) {
@@ -171,7 +171,7 @@ fun main(args: Array<String>) {
                }
             }
             logger.info { "Restoring active preset '$presetName' (${preset.patternName})" }
-            StartupPattern(preset.patternName, rawParams)
+            StartupPattern(preset.patternName, rawParams, presetName = presetName)
          }
          else {
             logger.warn { "Active preset '$presetName' not found in database, using default" }
@@ -200,7 +200,7 @@ fun main(args: Array<String>) {
 
       // Seed in-memory active-pattern state from startup restore
       if(restoredPreset != null) {
-         previewServer.setCurrentPattern(startupPattern.name, startupPattern.rawParams)
+         previewServer.setCurrentPattern(startupPattern.name, startupPattern.rawParams, presetName = startupPattern.presetName)
       }
 
       // Handle pattern changes from web interface
