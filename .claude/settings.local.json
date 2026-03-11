@@ -30,7 +30,9 @@
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
       "Bash(openspec list:*)",
-      "WebFetch(domain:www.4rknova.com)"
+      "WebFetch(domain:www.4rknova.com)",
+      "Bash(find /Users/tlberglund/code/led-strip-host -path \"**/main/kotlin*\" -name \"*Viewport*\" -o -path \"**/main/kotlin*\" -name \"*Color*\" | grep -E \"\\\\.\\(kt\\)$\")",
+      "Bash(find /Users/tlberglund/code/led-strip-host -path \"**/main/kotlin*\" -name \"*Mapper*\" -o -path \"**/main/kotlin*\" -name \"*mapper*\" | grep \"\\\\.kt$\")"
     ]
   }
 }

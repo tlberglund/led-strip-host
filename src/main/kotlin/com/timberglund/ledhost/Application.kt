@@ -12,6 +12,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import com.timberglund.ledhost.pattern.DefaultPatternRegistry
 import com.timberglund.ledhost.pattern.PatternParameters
+import com.timberglund.ledhost.pattern.patterns.AlternatingBarsPattern
 import com.timberglund.ledhost.pattern.patterns.PlasmaInterferencePattern
 import com.timberglund.ledhost.pattern.patterns.PlasmaPattern
 import com.timberglund.ledstrip.BluetoothHost
@@ -94,6 +95,7 @@ fun main(args: Array<String>) {
 
    // Create and populate pattern registry
    val patternRegistry = DefaultPatternRegistry()
+   patternRegistry.register(AlternatingBarsPattern())
    patternRegistry.register(PlasmaPattern())
    patternRegistry.register(PlasmaInterferencePattern())
    patternRegistry.register(RainbowPattern())
