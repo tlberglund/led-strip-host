@@ -41,7 +41,7 @@ otherColor  = if (barIndex % 2 == 0) colorB else colorA
 distToEdge  = min(frac, 1f - frac) * barWidthPixels
 
 // Smoothstep blend: 0 = fully otherColor at boundary, 1 = fully baseColor at center
-raw         = clamp(distToEdge / TRANSITION_HALF_PX, 0f, 1f)   // TRANSITION_HALF_PX = 0.5f
+raw         = clamp(distToEdge / TRANSITION_HALF_PX, 0f, 1f)   // TRANSITION_HALF_PX = 1.5f
 smooth      = raw * raw * (3f - 2f * raw)
 
 color       = Color.blend(otherColor, baseColor, smooth)
@@ -52,7 +52,7 @@ Since bars always alternate, both boundaries of any bar blend toward the same `o
 **Alternatives considered:**
 - Hard `floor()` cutoff with no blending — produces sharp staircase artifacts at diagonal angles, visible as LEDs jump discretely between colors.
 - Cosine-wave soft cycle — smooth but bars are never truly solid; the center always has some gradient. Rejected in favor of solid bars with edge-only blending.
-- Configurable transition width parameter — adds UI complexity for a perceptual detail users are unlikely to tune. Fixed at 1 pixel (the display's native resolution).
+- Configurable transition width parameter — adds UI complexity for a perceptual detail users are unlikely to tune. Fixed at 3 pixels / 48mm (TRANSITION_HALF_PX = 1.5f), which ensures the blend spans enough LEDs to appear smooth at any scroll speed.
 
 ### mm-to-Pixels Conversion
 
@@ -69,7 +69,7 @@ This constant matches the physical LED spacing stated in the requirements. It is
 | `colorA` | ColorParam | — | `#ff00001f` | First bar color |
 | `colorB` | ColorParam | — | `#0000ff1f` | Second bar color |
 | `barWidth` | FloatParam | 10–1000 mm | 80 mm | ~5 LED pitches |
-| `speed` | FloatParam | 0–200 mm/s | 50 mm/s | 0 = static |
+| `speed` | FloatParam | -500–500 mm/s | 50 mm/s | 0 = static, negative = reverse |
 | `angle` | FloatParam | 0–360° | 0° | Direction of travel |
 
 Speed in mm/s keeps the control intuitive: a value of 100 mm/s scrolls one bar-width every `barWidth/100` seconds.
@@ -83,4 +83,4 @@ All parameter types (`ColorParam`, `FloatParam`) are already handled generically
 - **Floating-point projection at every pixel per frame** — acceptable; all existing patterns do per-pixel math. The viewport is not large.
 - **angle=0 and angle=360 visually identical** — expected behavior; 360° wraps to 0°. No mitigation needed.
 - **Very narrow bar widths (≤16mm = 1 pixel)** — at minimum width, the entire bar falls within the transition zone and bars never appear fully solid; they will look like a soft blend. This is acceptable at the extreme minimum and not worth special-casing.
-- **Transition width fixed at 1 pixel** — at very wide bars (e.g. 1000mm ≈ 62 pixels) the transition is imperceptibly thin. At narrow bars (10mm ≈ 0.6 pixels) the transition dominates. Both extremes are acceptable given the fixed-resolution display medium.
+- **Transition width fixed at 3 pixels / 48mm** — at very wide bars (1000mm ≈ 62 pixels) the blend zone is ~5% of the bar, imperceptible from a distance. At narrow bars (10mm ≈ 0.6 pixels) the bar is entirely within the transition zone and appears as a soft gradient rather than a solid bar; acceptable at that extreme.

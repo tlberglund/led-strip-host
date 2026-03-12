@@ -14,9 +14,9 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Run the application and confirm `GET /api/patterns` includes `alternating-bars` with all five parameters
-- [ ] 3.2 Activate the pattern via `POST /api/pattern/alternating-bars` with default params and confirm bars render in the preview
-- [ ] 3.3 Test angle=0° produces vertical bars, angle=90° produces horizontal bars
-- [ ] 3.4 Test speed=0 produces a static pattern; positive speed produces scrolling
-- [ ] 3.5 Test barWidth=80mm produces bars approximately 5 pixels wide in the viewport
-- [ ] 3.6 Confirm both colors render correctly including APA102 brightness component
+- [x] 3.1 Run the application and confirm `GET /api/patterns` includes `alternating-bars` with all five parameters
+- [x] 3.2 Activate the pattern via `POST /api/pattern/alternating-bars` with default params and confirm bars render in the preview
+- [x] 3.3 Test angle=0° produces vertical bars, angle=90° produces horizontal bars
+- [x] 3.4 Test speed=0 produces a static pattern; positive speed produces scrolling
+- [x] 3.5 Test barWidth=80mm produces bars approximately 5 pixels wide in the viewport
+- [x] 3.6 Confirm both colors render correctly including APA102 brightness component

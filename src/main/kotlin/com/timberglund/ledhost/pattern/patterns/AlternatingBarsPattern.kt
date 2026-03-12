@@ -12,14 +12,14 @@ import kotlin.math.min
 import kotlin.math.sin
 
 class AlternatingBarsPattern : Pattern {
-   override val name = "alternating-bars"
+   override val name = "Alternating Bars"
    override val description = "Alternating solid color bars that scroll at configurable speed and angle"
 
    override val parameters = listOf(
       ParameterDef.ColorParam("colorA",   "Color A",       "#ff00001f"),
       ParameterDef.ColorParam("colorB",   "Color B",       "#0000ff1f"),
       ParameterDef.FloatParam("barWidth", "Bar Width (mm)", 10f, 1000f, 1f, 80f),
-      ParameterDef.FloatParam("speed",    "Speed (mm/s)",   0f,  200f,  1f, 50f),
+      ParameterDef.FloatParam("speed",    "Speed (mm/s)", -500f, 500f,  1f, 50f),
       ParameterDef.FloatParam("angle",    "Angle (°)",      0f,  360f,  1f,  0f),
    )
 
@@ -35,7 +35,7 @@ class AlternatingBarsPattern : Pattern {
       colorA            = params.getColor("colorA", Color(255, 0, 0, 31))
       colorB            = params.getColor("colorB", Color(0, 0, 255, 31))
       val barWidthMm    = params.get("barWidth", 80f).coerceIn(10f, 1000f)
-      val speedMmPerSec = params.get("speed",    50f).coerceIn(0f, 200f)
+      val speedMmPerSec = params.get("speed",    50f).coerceIn(-500f, 500f)
       val angleDeg      = params.get("angle",     0f)
       val angleRad      = angleDeg * (PI.toFloat() / 180f)
       barWidthPixels    = barWidthMm / MM_PER_LED
@@ -71,6 +71,6 @@ class AlternatingBarsPattern : Pattern {
 
    companion object {
       const val MM_PER_LED         = 16.0f
-      const val TRANSITION_HALF_PX = 0.5f
+      const val TRANSITION_HALF_PX = 1.5f
    }
 }
