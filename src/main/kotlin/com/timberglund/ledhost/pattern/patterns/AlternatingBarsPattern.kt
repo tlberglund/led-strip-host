@@ -7,8 +7,8 @@ import com.timberglund.ledhost.viewport.Color
 import com.timberglund.ledhost.viewport.Viewport
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.min
 import kotlin.math.sin
 
 class AlternatingBarsPattern : Pattern {
@@ -54,15 +54,25 @@ class AlternatingBarsPattern : Pattern {
          for(x in 0 until viewport.width) {
             val projection = x * cosTheta + y * sinTheta
             val t          = (projection + scrollOffset) / barWidthPixels
-            val floored    = floor(t)
-            val frac       = t - floored
-            val barIndex   = floored.toInt()
-            val baseColor  = if(barIndex % 2 == 0) colorA else colorB
-            val otherColor = if(barIndex % 2 == 0) colorB else colorA
-            val distToEdge = min(frac, 1f - frac) * barWidthPixels
-            val raw        = (distToEdge / TRANSITION_HALF_PX).coerceIn(0f, 1f)
+
+            // Find the nearest bar boundary (integer value of t) and the signed
+            // distance to it. Each boundary separates one color from the other,
+            // so we blend across it consistently rather than per-bar.
+            val b          = floor(t + 0.5f).toInt()   // nearest boundary index
+            val dt         = t - b                      // signed distance in t-units
+            val dpx        = abs(dt) * barWidthPixels   // distance in pixels
+
+            // Colors on each side of boundary b
+            val leftColor  = if((b - 1) % 2 == 0) colorA else colorB
+            val rightColor = if(b % 2 == 0) colorA else colorB
+
+            // Smoothstep: 0 at the boundary, 1 beyond the transition zone
+            val raw        = (dpx / TRANSITION_HALF_PX).coerceIn(0f, 1f)
             val smooth     = raw * raw * (3f - 2f * raw)
-            viewport.setPixel(x, y, Color.blend(otherColor, baseColor, smooth))
+
+            // bf=0 → leftColor, bf=1 → rightColor; 0.5 at the boundary itself
+            val bf         = if(dt <= 0f) 0.5f * (1f - smooth) else 0.5f + 0.5f * smooth
+            viewport.setPixel(x, y, Color.blend(leftColor, rightColor, bf))
          }
       }
    }
