@@ -1,6 +1,6 @@
 plugins {
-   kotlin("jvm") version "2.3.0"
-   kotlin("plugin.serialization") version "2.3.0"
+   kotlin("jvm") version "2.4.20"
+   kotlin("plugin.serialization") version "2.4.20"
    application
 }
 
@@ -38,10 +38,10 @@ sourceSets {
 
 dependencies {
    // Core
-   implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.0")
+   implementation("org.jetbrains.kotlin:kotlin-stdlib:2.4.20")
 
    // Web Server (Ktor)
-   val ktorVersion = "3.4.0"
+   val ktorVersion = "3.6.0"
    implementation("io.ktor:ktor-server-core:$ktorVersion")
    implementation("io.ktor:ktor-server-netty:$ktorVersion")
    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
@@ -49,43 +49,43 @@ dependencies {
    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
    // Serialization
-   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
    // Configuration
-   implementation("com.charleskorn.kaml:kaml:0.55.0") // YAML
+   implementation("com.charleskorn.kaml:kaml:0.104.0") // YAML
 
    // CLI (optional, for command-line interface)
    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
 
    // Serial Communication
-   implementation("com.fazecast:jSerialComm:2.10.4")
+   implementation("com.fazecast:jSerialComm:2.11.4")
 
    implementation(kotlin("stdlib"))
 
    // Bluetooth LE library - BLESSED-Bluez for both platforms
-   implementation("com.github.weliem:blessed-bluez:0.65")
+   implementation("com.github.weliem.blessed-bluez:blessed:0.65")
    implementation("com.github.hypfvieh:dbus-java-transport-native-unixsocket:4.3.2")
 
    // Database (Exposed ORM + PostgreSQL JDBC)
-   val exposedVersion = "0.55.0"
+   val exposedVersion = "1.5.0"
    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-   implementation("org.postgresql:postgresql:42.7.3")
+   implementation("org.postgresql:postgresql:42.7.13")
 
    // Logging
-   implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
-   implementation("ch.qos.logback:logback-classic:1.4.14")
+   implementation("io.github.oshai:kotlin-logging-jvm:8.0.4")
+   implementation("ch.qos.logback:logback-classic:1.6.5")
 
    // Testing
    testImplementation(kotlin("test"))
-   testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-   testImplementation("io.mockk:mockk:1.13.8")
+   testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
+   testImplementation("io.mockk:mockk:1.14.11")
    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
    testImplementation("io.ktor:ktor-client-core:$ktorVersion")
    testImplementation("io.ktor:ktor-client-cio:$ktorVersion")
    testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
-   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }
 
 tasks.register<Exec>("buildFrontend") {

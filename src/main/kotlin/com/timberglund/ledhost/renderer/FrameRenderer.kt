@@ -4,7 +4,7 @@ import com.timberglund.ledhost.pattern.Pattern
 import com.timberglund.ledhost.pattern.PatternParameters
 import com.timberglund.ledhost.viewport.Viewport
 import kotlinx.serialization.Serializable
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 

@@ -1,6 +1,6 @@
 package com.timberglund.ledstrip
 
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 

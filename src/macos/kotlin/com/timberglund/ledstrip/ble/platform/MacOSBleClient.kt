@@ -3,7 +3,7 @@ package com.timberglund.ledstrip.ble.platform
 import com.timberglund.ledstrip.ble.BleClient
 import com.welie.blessed.*
 import kotlinx.coroutines.*
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException

@@ -22,7 +22,7 @@ import com.timberglund.ledhost.renderer.FrameRenderer
 import com.timberglund.ledhost.viewport.ArrayViewport
 import com.timberglund.ledhost.web.PreviewServer
 import kotlinx.coroutines.*
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 

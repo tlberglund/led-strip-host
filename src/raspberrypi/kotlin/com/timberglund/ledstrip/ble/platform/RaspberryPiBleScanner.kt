@@ -4,7 +4,7 @@ import com.timberglund.ledstrip.ble.BleDevice
 import com.timberglund.ledstrip.ble.BleScanner
 import com.welie.blessed.*
 import kotlinx.coroutines.*
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
